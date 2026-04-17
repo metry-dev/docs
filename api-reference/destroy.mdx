@@ -1,0 +1,65 @@
+---
+title: "Metry.destroy() — Fully shut down the SDK instance"
+sidebarTitle: "destroy()"
+description: "Stop the flush timer, remove lifecycle listeners, and attempt a final flush. After destroy(), call init() again before using any other SDK method."
+---
+
+Call `Metry.destroy()` to fully shut down the SDK instance. It stops the periodic flush timer, removes the `visibilitychange` and `pagehide` event listeners registered by `init()`, and attempts one final flush of any events still in the queue. After `destroy()` returns, the internal instance is set to `null` — calling any other SDK method without first calling `init()` again will throw `[Metry] Call .init() first`. This is most useful in SPA teardown scenarios and test suite cleanup.
+
+```typescript
+Metry.destroy(): void
+```
+
+## Parameters
+
+None.
+
+## Returns
+
+`void`
+
+## Examples
+
+### SPA teardown
+
+```typescript
+// Cleanup when a micro-frontend or SPA shell unmounts
+function teardown() {
+  Metry.destroy()
+}
+```
+
+### React cleanup in useEffect
+
+```typescript
+useEffect(() => {
+  Metry.init({
+    apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+    endpoint: 'https://ingest.example.com/v1/events',
+  })
+
+  return () => {
+    Metry.destroy()
+  }
+}, [])
+```
+
+### Test suite teardown
+
+```typescript
+afterEach(() => {
+  Metry.destroy()
+})
+```
+
+<Note>
+  The final flush triggered by `destroy()` is best-effort. If the queue contains events but the network is unavailable, those events will be lost. Call `flush()` or `sendBeacon()` explicitly before `destroy()` if delivery must be guaranteed.
+</Note>
+
+<Warning>
+  After `destroy()`, the SDK has no active instance. Any call to `identify()`, `step()`, `flush()`, `reset()`, `sendBeacon()`, or `destroy()` itself will throw `[Metry] Call .init() first` until you reinitialise with `init()`.
+</Warning>
+
+<Tip>
+  You do not need to call `destroy()` in typical single-page applications. It is primarily useful in test environments — where you want a clean state between tests — and in micro-frontend architectures where the SDK may be mounted and unmounted multiple times.
+</Tip>

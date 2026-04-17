@@ -1,0 +1,71 @@
+---
+title: "Metry.flush() — Force-send all queued events now"
+sidebarTitle: "flush()"
+description: "Immediately send queued events via fetch. Returns a Promise that resolves when the request settles. Server errors re-queue; client errors are dropped."
+---
+
+Call `Metry.flush()` when you need to guarantee that all queued events have been submitted before a specific action — for example, before navigating to an external URL in a single-page application, or before making an assertion in a test. Under normal circumstances you do not need to call this method; the SDK flushes events automatically on a timer, when the batch fills, and whenever the page becomes hidden or unloads.
+
+```typescript
+Metry.flush(): Promise<void>
+```
+
+## Parameters
+
+None.
+
+## Returns
+
+<ResponseField name="Promise<void>" type="Promise<void>">
+  Resolves when the HTTP request has settled — either successfully or after a failure has been handled. If the queue is empty when `flush()` is called, the promise resolves immediately without making a network request.
+</ResponseField>
+
+## Error handling
+
+The SDK applies different retry strategies depending on the HTTP status code returned by your ingest endpoint:
+
+- **5xx responses** — The batch is re-queued and will be retried on the next flush.
+- **4xx responses** — The batch is permanently dropped and a `[Metry - Warning]` message is logged. These typically indicate malformed payloads or invalid API keys.
+- **Network errors** — The batch is re-queued, consistent with the 5xx behaviour.
+
+## Examples
+
+### Flush before external navigation
+
+```typescript
+async function handleExternalLink(url: string) {
+  await Metry.flush()
+  window.location.href = url
+}
+```
+
+### Flush in a test after triggering events
+
+```typescript
+it('tracks checkout_completed', async () => {
+  Metry.step('checkout_completed', { plan: 'pro' })
+  await Metry.flush()
+
+  expect(mockFetch).toHaveBeenCalledWith(
+    expect.stringContaining('/v1/events'),
+    expect.objectContaining({ method: 'POST' }),
+  )
+})
+```
+
+### Awaiting flush before SPA route change
+
+```typescript
+router.beforeEach(async (_to, _from, next) => {
+  await Metry.flush()
+  next()
+})
+```
+
+<Note>
+  `flush()` only sends the events that are queued at the moment it is called. Any events added via `step()` after `flush()` begins will be included in a future flush.
+</Note>
+
+<Tip>
+  For page-unload scenarios, prefer `sendBeacon()` over `flush()`. The `fetch`-based request used by `flush()` may be cancelled by the browser when a page is unloading, whereas `sendBeacon()` is specifically designed to survive tab or window closure.
+</Tip>

@@ -1,0 +1,92 @@
+---
+title: "How Metry batches and flushes events automatically"
+sidebarTitle: "Batching"
+description: "Metry queues events locally and sends them in batches to reduce network overhead. Learn the three flush triggers, retry behavior, and how to flush manually."
+---
+
+Metry never sends events one at a time. Instead, each call to `Metry.step()` pushes the event onto an in-memory queue. The SDK then drains that queue in batches according to three automatic flush triggers, keeping network overhead low without losing data. Understanding how this works helps you tune the defaults and handle edge cases like page unload.
+
+## The three flush triggers
+
+<Steps>
+  <Step title="Timer interval">
+    A `setInterval` fires every `flushInterval` milliseconds (default: **5000 ms**) and sends whatever is in the queue at that moment. You can configure this when you call `Metry.init()`.
+
+    ```ts
+    Metry.init({
+      apiKey: 'pk_live_xxxx',
+      endpoint: 'https://ingest.example.com/v1/events',
+      flushInterval: 3000, // flush every 3 seconds instead of 5
+    })
+    ```
+  </Step>
+  <Step title="Batch size threshold">
+    If the queue reaches `maxBatchSize` events before the timer fires, the SDK flushes immediately. The default is **50 events per batch**; the hard maximum the SDK will ever send in one request is **100 events**.
+
+    ```ts
+    Metry.init({
+      apiKey: 'pk_live_xxxx',
+      endpoint: 'https://ingest.example.com/v1/events',
+      maxBatchSize: 25, // flush sooner on high-traffic pages
+    })
+    ```
+  </Step>
+  <Step title="Page unload via sendBeacon">
+    The SDK listens for `visibilitychange` (tab hidden) and `pagehide` events. When either fires, it drains the entire queue using `navigator.sendBeacon` — a browser API designed for exactly this scenario, because a `fetch` call would be cancelled as the page unloads.
+  </Step>
+</Steps>
+
+## The internal queue
+
+The SDK holds events in an in-memory queue with a maximum capacity of **1000 events**. If the queue is full and a new event arrives, the **oldest event is dropped** to make room. Under normal circumstances — with auto-flush running every few seconds — the queue should never come close to this limit.
+
+<Note>
+  The 1000-event cap is a safeguard against unbounded memory growth in scenarios where the network is unavailable for an extended period. If you are operating in an environment where the user might be offline for long stretches, consider reducing `maxBatchSize` and `flushInterval` so batches are smaller and sent more aggressively when connectivity returns.
+</Note>
+
+## Retry behavior
+
+Not all failures are equal. The SDK distinguishes between server errors and client errors:
+
+| Response | Behavior |
+|---|---|
+| `2xx` | Batch delivered successfully — events are discarded from the queue. |
+| `4xx` | Client error (bad API key, malformed payload). The batch is **dropped** — retrying would produce the same result. |
+| `5xx` | Server error. The batch is **re-queued** at the front of the queue and retried on the next flush. |
+| Network failure | Treated the same as a `5xx` — batch is re-queued for retry. |
+
+## Manual flush methods
+
+### `Metry.flush()`
+
+Sends the current queue immediately using `fetch`. Returns a `Promise` that resolves when the request settles (including after re-queueing on failure).
+
+```ts
+await Metry.flush()
+```
+
+<Tip>
+  You normally don't need to call `flush()` manually. The SDK flushes automatically on the timer interval, when the batch fills, and on page unload. Reserve manual flush for specific moments where you need delivery guarantees before a user action completes — for example, right before redirecting to an external checkout page.
+</Tip>
+
+### `Metry.sendBeacon()`
+
+Drains the entire queue using `navigator.sendBeacon`. This is a fire-and-forget API: the browser schedules the request independently of the page lifecycle, so it survives navigation. It is a no-op on the server (where `navigator` is not defined).
+
+```ts
+Metry.sendBeacon()
+```
+
+<Note>
+  `flush()` uses `fetch` and returns a `Promise`, so you know whether the request succeeded and can react to failures. `sendBeacon()` is fire-and-forget — there is no response callback, and the browser may throttle or delay the request under resource pressure. The SDK hooks `visibilitychange` and `pagehide` automatically, so you only need to call `sendBeacon()` directly if you have a custom unload flow that bypasses those events.
+</Note>
+
+## Summary
+
+| Mechanism | Trigger | API |
+|---|---|---|
+| Timer | Every `flushInterval` ms (default 5000) | Automatic |
+| Batch size | Queue reaches `maxBatchSize` (default 50, max 100) | Automatic |
+| Page unload | `visibilitychange` / `pagehide` | Automatic (`sendBeacon`) |
+| Manual fetch | On demand | `Metry.flush()` |
+| Manual beacon | On demand | `Metry.sendBeacon()` |

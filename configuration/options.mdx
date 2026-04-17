@@ -1,0 +1,49 @@
+---
+title: "Configure Metry: init() options, defaults, and limits"
+sidebarTitle: "Options"
+description: "Reference for every option accepted by Metry.init() — apiKey, endpoint, flushInterval, maxBatchSize, and debug — with defaults, types, and constraints."
+---
+
+You pass configuration to `Metry.init()` once at application startup, before calling any other SDK method. Required options must always be provided; optional options fall back to sensible defaults if omitted. Calling `Metry.init()` a second time is safe — it tears down the previous instance and starts a fresh one.
+
+<ParamField body="apiKey" type="string" required>
+  Your publishable API key. Safe to include in browser code — it is sent as the `x-api-key` header on every ingest request.
+</ParamField>
+
+<ParamField body="endpoint" type="string" required>
+  The URL of your Metry ingest endpoint. Must use `https://` in production. `http://` is only allowed when the hostname is `localhost`, `127.0.0.1`, or `[::1]`.
+</ParamField>
+
+<ParamField body="flushInterval" type="number" default="5000">
+  Milliseconds between automatic event flushes. The SDK starts a repeating timer on initialization and sends any queued events each time it fires. Minimum effective value is `1`.
+</ParamField>
+
+<ParamField body="maxBatchSize" type="number" default="50">
+  Maximum number of events included in a single HTTP request. If the queue reaches this threshold before the flush timer fires, the SDK flushes immediately. Values above `100` are silently capped to `100`.
+</ParamField>
+
+<ParamField body="debug" type="boolean" default="false">
+  Enable verbose logging to the browser console. All debug messages are prefixed with `[Metry]`. Only enable this in development — never ship debug mode to production.
+</ParamField>
+
+## Complete example
+
+The snippet below shows every available option. Only `apiKey` and `endpoint` are required.
+
+```js
+Metry.init({
+  apiKey: process.env.NEXT_PUBLIC_METRY_KEY,
+  endpoint: 'https://ingest.example.com/v1/events',
+  flushInterval: 10000,
+  maxBatchSize: 25,
+  debug: false,
+})
+```
+
+<Warning>
+  Passing an `http://` endpoint whose hostname is not `localhost`, `127.0.0.1`, or `[::1]` throws an error immediately. Always use `https://` for any non-local endpoint.
+</Warning>
+
+<Note>
+  Calling `Metry.init()` more than once is safe. Each call destroys the previous instance — stopping its flush timer and removing lifecycle listeners — and starts a new one. This behaviour makes the SDK compatible with React Strict Mode and Next.js Fast Refresh.
+</Note>

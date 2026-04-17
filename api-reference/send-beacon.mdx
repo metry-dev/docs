@@ -1,0 +1,61 @@
+---
+title: "Metry.sendBeacon() — Flush events on page unload"
+sidebarTitle: "sendBeacon()"
+description: "Drain the event queue using navigator.sendBeacon for reliable delivery during page unload, when fetch requests are cancelled by the browser."
+---
+
+Call `Metry.sendBeacon()` when you need to flush the event queue in a page-unload context. Unlike `flush()`, which relies on `fetch`, `sendBeacon()` uses the browser's native `navigator.sendBeacon` API, which is specifically designed to send small payloads reliably even as a page is being torn down. The SDK already calls this automatically on `visibilitychange` and `pagehide` — you only need to call it manually if you have a custom unload flow that those events do not cover.
+
+```typescript
+Metry.sendBeacon(): Promise<void>
+```
+
+## Parameters
+
+None.
+
+## Returns
+
+<ResponseField name="Promise<void>" type="Promise<void>">
+  Resolves after all batches have been handed off to `navigator.sendBeacon`. Note that the browser does not provide confirmation of delivery — the promise resolving only indicates that the data was accepted into the browser's send queue. On the server or in environments without `navigator.sendBeacon`, the call is a no-op and the promise resolves immediately.
+</ResponseField>
+
+## Examples
+
+### Manual unload hook
+
+```typescript
+window.addEventListener('beforeunload', () => {
+  Metry.sendBeacon()
+})
+```
+
+### Custom SPA teardown
+
+```typescript
+async function teardownApp() {
+  await Metry.sendBeacon()
+  unmountRoot()
+}
+```
+
+### Combining with destroy
+
+```typescript
+async function shutdown() {
+  await Metry.sendBeacon()
+  Metry.destroy()
+}
+```
+
+<Note>
+  The SDK automatically hooks `visibilitychange` and `pagehide` when `init()` is called. In most cases you do not need to call `sendBeacon()` manually — it is provided for advanced scenarios where you manage your own unload lifecycle.
+</Note>
+
+<Warning>
+  `navigator.sendBeacon` does not support custom request headers. The API key is embedded in the JSON body (via the `apiKey` field of `EventRequestPayload`) rather than sent as an HTTP header when using the beacon path.
+</Warning>
+
+<Tip>
+  Prefer `sendBeacon()` over `flush()` inside `beforeunload`, `pagehide`, and `visibilitychange` handlers. Browsers aggressively cancel in-flight `fetch` requests during page teardown, but beacon requests are queued at the OS level and complete even after the page is gone.
+</Tip>

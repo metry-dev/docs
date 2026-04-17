@@ -1,0 +1,77 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Metry",
+  "colors": {
+    "primary": "#6d61eb",
+    "light": "#fafafa",
+    "dark": "#121212"
+  },
+  "favicon": "https://media.brand.dev/0c613b69-d705-4eb3-b3cb-fbfca5a8fa48.png",
+  "logo": "https://media.brand.dev/dc30c59b-77cf-49dd-96c6-7913290c2217.svg",
+  "navbar": {
+    "links": []
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/events",
+              "concepts/identity",
+              "concepts/batching"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/nextjs",
+              "guides/spa",
+              "guides/funnels"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/options",
+              "configuration/debugging"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "SDK Methods",
+            "pages": [
+              "api-reference/init",
+              "api-reference/identify",
+              "api-reference/step",
+              "api-reference/flush",
+              "api-reference/reset",
+              "api-reference/send-beacon",
+              "api-reference/destroy"
+            ]
+          },
+          {
+            "group": "Types",
+            "pages": [
+              "api-reference/types"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

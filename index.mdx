@@ -1,0 +1,42 @@
+---
+title: "Metry: Browser event tracking and funnel analytics SDK"
+description: "Metry is a lightweight JavaScript SDK that tracks user events and funnel steps in browser apps. Install in minutes, identify users, and track every step."
+---
+
+Metry gives you a simple, reliable way to track what your users do — from their first page view to conversion and beyond. With a handful of method calls, you can identify users, record named events, and stream batched data to your analytics ingest endpoint without blocking the browser.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="bolt" href="/quickstart">
+    Install Metry and send your first event in under five minutes.
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts/events">
+    Understand events, identity, and how batching keeps your data reliable.
+  </Card>
+  <Card title="Guides" icon="map" href="/guides/nextjs">
+    Step-by-step walkthroughs for Next.js, SPAs, and funnel tracking.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/init">
+    Full reference for every SDK method and TypeScript type.
+  </Card>
+</CardGroup>
+
+## How it works
+
+<Steps>
+  <Step title="Install the SDK">
+    Add `@metry-dev/sdk` to your project with npm, yarn, or pnpm.
+  </Step>
+  <Step title="Initialize with your API key">
+    Call `Metry.init()` once with your publishable API key and ingest endpoint URL.
+  </Step>
+  <Step title="Identify your users">
+    Call `Metry.identify()` after login to attach a user ID and traits to all subsequent events.
+  </Step>
+  <Step title="Track events">
+    Call `Metry.step()` anywhere in your app to record named events. Metry batches and flushes them automatically.
+  </Step>
+</Steps>
+
+<Note>
+  Metry is browser-only. It is safe to import in server-side code (e.g. Next.js), but `init()` and all tracking methods should only be called from client-side code.
+</Note>

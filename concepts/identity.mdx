@@ -1,0 +1,116 @@
+---
+title: "User identity and traits in Metry: identify() and reset()"
+sidebarTitle: "Identity"
+description: "Learn how Metry links events to users with identify(), what traits are attached to every event, and how sessions and reset() work together."
+---
+
+By default, Metry tracks events anonymously under an auto-generated session ID. Once you know who the user is — after login or signup — you call `Metry.identify()` to associate all subsequent events with a real user ID and optional traits. That identity is then included in every event batch until you call `Metry.reset()`.
+
+## Identifying a user
+
+```ts
+Metry.identify(userId: string, traits: Record<string, unknown> = {})
+```
+
+- **`userId`** — A string that uniquely identifies the user in your system. Use a stable, non-PII identifier like a database ID or UUID.
+- **`traits`** — An optional `Record<string, unknown>` of attributes that describe the user. Traits are sent with every event after this call.
+
+```ts
+Metry.identify('user_42', {
+  email: 'alice@example.com',
+  name: 'Alice Nguyen',
+  plan: 'pro',
+  source: 'google_ads',
+})
+```
+
+After this call, every event batch includes the identity object so your ingest endpoint can attribute events to the right user.
+
+<Warning>
+  Traits are included in **every event payload** sent to your ingest endpoint — not just at the moment you call `identify()`. Avoid putting sensitive PII (passwords, full credit card numbers, government IDs) in traits unless you fully control the ingest endpoint and have appropriate data handling in place.
+</Warning>
+
+## The identity object shape
+
+The identity is stored internally as an `Identity` type and embedded in each request payload:
+
+```ts
+type Identity = {
+  userId: string | null
+  traits?: Record<string, unknown>
+}
+```
+
+Before `identify()` is called, `userId` is `null` and `traits` is an empty object `{}`. After calling `identify()`, both fields reflect the values you provided.
+
+## When to call identify()
+
+Call `identify()` as soon as the user's identity becomes known to your app:
+
+<Steps>
+  <Step title="After login">
+    The user just authenticated. You now have a stable user ID to associate with future events.
+
+    ```ts
+    async function handleLogin(credentials) {
+      const user = await authService.login(credentials)
+      Metry.identify(user.id, { email: user.email, plan: user.plan })
+    }
+    ```
+  </Step>
+  <Step title="After signup">
+    A new account was just created. Identifying immediately links the first events (onboarding steps, feature tours) to the new user.
+
+    ```ts
+    async function handleSignup(form) {
+      const user = await authService.signup(form)
+      Metry.identify(user.id, { email: user.email, source: form.referral })
+    }
+    ```
+  </Step>
+  <Step title="On page load when the session is already authenticated">
+    If you persist authentication across page loads, re-identify the user on init so pre-flush events are attributed correctly.
+
+    ```ts
+    Metry.init({ apiKey: '...', endpoint: '...' })
+
+    const session = await getSession()
+    if (session?.user) {
+      Metry.identify(session.user.id, { plan: session.user.plan })
+    }
+    ```
+  </Step>
+</Steps>
+
+## Sessions
+
+Metry generates a **session ID** automatically when you call `Metry.init()`. The session ID is a random string that groups all events from a single browser session together. You never need to set or manage it manually — it is included in every request payload.
+
+The session ID is regenerated whenever you call `Metry.reset()`.
+
+## Resetting identity on logout
+
+Call `Metry.reset()` when the user logs out. It does four things:
+
+1. Clears the `userId` (sets it back to `null`)
+2. Clears all traits (resets to `{}`)
+3. Drops any events currently sitting in the pending queue
+4. Generates a new session ID
+
+```ts
+async function handleLogout() {
+  await authService.logout()
+  Metry.reset()
+}
+```
+
+After `reset()`, any new events you track will be anonymous — associated with the new session ID but no user — until you call `identify()` again.
+
+<AccordionGroup>
+  <Accordion title="What happens to events tracked before identify()?">
+    Events tracked before you call `identify()` use `userId: null`. They are still sent to your ingest endpoint and tagged with the session ID, so you can correlate anonymous and identified events by session if your backend joins on `sessionId`.
+  </Accordion>
+  <Accordion title="Can I call identify() multiple times?">
+    Yes. Each call to `identify()` replaces the current `userId` and `traits` entirely. You might do this if a user switches accounts or if you receive updated trait data (for example, after a plan upgrade).
+  </Accordion>
+</AccordionGroup>

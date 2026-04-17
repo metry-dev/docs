@@ -1,0 +1,66 @@
+---
+title: "Metry.identify() — Associate all events with a user"
+sidebarTitle: "identify()"
+description: "Associate a user ID and optional traits with all subsequent events. Call after login or whenever the current user's identity becomes known to your app."
+---
+
+Call `Metry.identify()` after a user logs in or whenever their identity becomes available. Once called, every event tracked with `step()` will carry the provided `userId` and `traits` in its payload. Traits persist across events until you call `identify()` again with new values or call `reset()` on logout.
+
+```typescript
+Metry.identify(userId: string, traits?: Record<string, unknown>): void
+```
+
+## Parameters
+
+<ParamField body="userId" type="string" required>
+  A unique, stable identifier for the user — for example, a database primary key or UUID. This value is included in every subsequent event payload under the `identity.userId` field.
+</ParamField>
+
+<ParamField body="traits" type="Record<string, unknown>">
+  Optional key-value metadata describing the user. Common examples include `email`, `name`, `plan`, and `createdAt`. Traits are merged into each outbound event payload and persist until overwritten by the next `identify()` call or cleared by `reset()`.
+</ParamField>
+
+## Returns
+
+`void`
+
+## Examples
+
+### Basic identification after login
+
+```typescript
+Metry.identify('usr_01HXYZ', {
+  email: 'ada@example.com',
+  name: 'Ada Lovelace',
+  plan: 'pro',
+})
+```
+
+### Identification without traits
+
+```typescript
+Metry.identify('usr_01HXYZ')
+```
+
+### Updating traits on plan change
+
+```typescript
+// After a successful upgrade
+Metry.identify(currentUser.id, {
+  ...currentUser.traits,
+  plan: 'enterprise',
+  upgradedAt: new Date().toISOString(),
+})
+```
+
+<Note>
+  Traits are merged into the event payload as-is and sent to your ingest endpoint. Avoid including sensitive values such as passwords or full payment card numbers.
+</Note>
+
+<Warning>
+  Calling `identify()` before `init()` throws `[Metry] Call .init() first`. Always ensure `init()` has completed before calling any other SDK method.
+</Warning>
+
+<Tip>
+  Call `reset()` on logout to clear the stored `userId` and traits so that events tracked after logout are not mistakenly attributed to the previous user.
+</Tip>

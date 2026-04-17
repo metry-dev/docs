@@ -1,0 +1,71 @@
+---
+title: "Metry.step() — Record and queue a named user event"
+sidebarTitle: "step()"
+description: "Queue a named event with optional properties. Events are batched and sent automatically on a timer, on batch fill, or when the page is hidden or unloaded."
+---
+
+Call `Metry.step()` anywhere in your application to record a named event. The event is added to an internal queue and flushed automatically — either on the next timer tick, when the queue reaches `maxBatchSize`, or when the browser hides or unloads the page. Every event is timestamped at the moment `step()` is called, so the recorded time accurately reflects when the action occurred even if delivery is delayed.
+
+```typescript
+Metry.step(name: string, properties?: Record<string, unknown>): void
+```
+
+## Parameters
+
+<ParamField body="name" type="string" required>
+  The name of the event, between 1 and 100 characters. Use a consistent naming convention across your codebase — for example, `snake_case` verb–noun pairs like `page_view`, `button_clicked`, or `checkout_completed`. Names that are empty or longer than 100 characters are silently dropped and a `[Metry - Warning]` message is logged to the console.
+</ParamField>
+
+<ParamField body="properties" type="Record<string, unknown>">
+  Optional plain-object metadata to attach to the event. All values must be JSON-serializable. If a non-plain object (e.g., a class instance, array, or `Map`) is passed, the event is silently dropped and a console warning is emitted. The properties are sent as-is inside the `events[].properties` field of the payload.
+</ParamField>
+
+## Returns
+
+`void`
+
+## Examples
+
+### Simple event with no properties
+
+```typescript
+Metry.step('page_view')
+```
+
+### Event with properties
+
+```typescript
+Metry.step('page_view', { path: '/pricing', referrer: document.referrer })
+```
+
+### Tracking user interactions
+
+```typescript
+function handleSignup(plan: string) {
+  Metry.step('signup_completed', {
+    plan,
+    timestamp: new Date().toISOString(),
+  })
+}
+```
+
+### Tracking feature usage
+
+```typescript
+Metry.step('export_clicked', {
+  format: 'csv',
+  rowCount: selectedRows.length,
+})
+```
+
+<Note>
+  Events are timestamped at call time using `new Date().toISOString()`. Even if a flush is delayed, the `timestamp` field in the payload reflects the original moment the event occurred.
+</Note>
+
+<Warning>
+  `properties` must be a plain object (`{}`). Arrays, class instances, `Map`, `Set`, and other non-plain values cause the entire event to be dropped. If you need to include array data, nest it inside a plain object key.
+</Warning>
+
+<Tip>
+  You do not need to call `flush()` after every `step()`. The SDK batches events automatically and flushes them on an interval, when the batch fills, and on page unload. Manually calling `flush()` is only necessary for special cases such as single-page transitions or test assertions.
+</Tip>

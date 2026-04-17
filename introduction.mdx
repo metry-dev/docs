@@ -1,0 +1,54 @@
+---
+title: "Metry: Lightweight JavaScript event tracking for browsers"
+description: "Metry is a lightweight JavaScript SDK for tracking named events, identifying users, and reliably delivering analytics data from the browser."
+---
+
+Metry is a lightweight browser event-tracking SDK that gives you a simple, reliable way to capture what users do in your application. It handles batching, automatic retries, and page-unload delivery so you can focus on instrumentation rather than infrastructure.
+
+## Key capabilities
+
+- **Track named events** — call `Metry.step()` to record any action with optional metadata properties
+- **Identify users with traits** — call `Metry.identify()` to associate events with a user ID and attach traits (email, plan, etc.) to every subsequent event
+- **Automatic batching and retry** — events queue up and flush on a configurable interval (default 5 seconds) or when the batch reaches its size threshold (default 50, max 100)
+- **Page-unload beacon flushing** — the SDK hooks `visibilitychange` and `pagehide` automatically, using `navigator.sendBeacon` to deliver queued events even when the page is closing
+- **SSR-safe** — safe to import in server-side code; timers and beacon sends are no-ops outside the browser, so only `init()` needs to be called from client code
+
+## When to use Metry
+
+Use Metry when you need a small, dependency-free way to stream behavioral events from the browser to your own ingest endpoint. It is a good fit if you control the backend, want to avoid third-party analytics vendors, or need a minimal footprint in a performance-critical app.
+
+Metry is **not** a full analytics platform. It does not include dashboards, session replay, A/B testing, or identity resolution — it is a transport layer only.
+
+## Installation
+
+Install the package from npm using your preferred package manager.
+
+<CodeGroup>
+
+```bash npm
+npm install @metry-dev/sdk
+```
+
+```bash yarn
+yarn add @metry-dev/sdk
+```
+
+```bash pnpm
+pnpm add @metry-dev/sdk
+```
+
+</CodeGroup>
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    Initialize the SDK and send your first event in under five minutes.
+  </Card>
+  <Card title="Events" icon="chart-line" href="/concepts/events">
+    Learn how events are structured, queued, and delivered.
+  </Card>
+  <Card title="API reference: init()" icon="code" href="/api-reference/init">
+    Full reference for every configuration option accepted by `Metry.init()`.
+  </Card>
+</CardGroup>

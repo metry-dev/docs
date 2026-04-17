@@ -1,0 +1,107 @@
+---
+title: "Quickstart: install Metry and send your first event"
+description: "Install the Metry SDK, call init() with your API key, identify your users, and send your first event. Full setup takes under five minutes."
+---
+
+This guide walks you through installing the Metry SDK, wiring it into your application, and sending your first event. The whole process takes about five minutes. Events are queued in memory and sent automatically in batches — the default batch size is 50 events (maximum 100), and the SDK flushes on a timer, on batch fill, and on page unload.
+
+<Steps>
+
+<Step title="Install the package">
+
+Install `@metry-dev/sdk` from npm using your preferred package manager.
+
+<CodeGroup>
+
+```bash npm
+npm install @metry-dev/sdk
+```
+
+```bash yarn
+yarn add @metry-dev/sdk
+```
+
+```bash pnpm
+pnpm add @metry-dev/sdk
+```
+
+</CodeGroup>
+
+</Step>
+
+<Step title="Initialize the SDK">
+
+Import `Metry` and call `init()` once when your application boots. The `apiKey` and `endpoint` fields are both required.
+
+```ts
+import { Metry } from '@metry-dev/sdk'
+
+Metry.init({
+  apiKey: 'YOUR_API_KEY',
+  endpoint: 'https://ingest.example.com/v1/events',
+})
+```
+
+<Warning>
+  `Metry.init()` is browser-only. The package is safe to import in server-side code, but you must only call `init()` from client-side code. In Next.js, call it inside a Client Component or a `useEffect` hook.
+</Warning>
+
+<Tip>
+  Enable verbose logging during development by passing `debug: true` to `init()`:
+
+  ```ts
+  Metry.init({
+    apiKey: 'YOUR_API_KEY',
+    endpoint: 'https://ingest.example.com/v1/events',
+    debug: true,
+  })
+  ```
+
+  Debug mode prints each queued event and every outgoing batch to the browser console, making it easy to verify your instrumentation before going to production.
+</Tip>
+
+</Step>
+
+<Step title="Identify the user">
+
+After the user logs in or becomes known, call `Metry.identify()` to associate all subsequent events with their ID. Pass any traits you want attached to those events.
+
+```ts
+Metry.identify('user_123', {
+  email: 'alice@example.com',
+  plan: 'pro',
+})
+```
+
+Traits persist until you call `Metry.identify()` again or `Metry.reset()` (for example, on logout).
+
+</Step>
+
+<Step title="Track your first event">
+
+Call `Metry.step()` to record a named event. The first argument is the event name (1–100 characters); the second is an optional plain-object of JSON-serializable properties.
+
+```ts
+Metry.step('signup_completed', {
+  plan: 'pro',
+  source: 'google_ads',
+})
+```
+
+The event is queued immediately and delivered in the next flush.
+
+</Step>
+
+<Step title="Events flush automatically">
+
+You do not need to manage flushing manually. The SDK flushes queued events every 5 seconds, whenever the batch size threshold is reached, and on page hide via `navigator.sendBeacon` — so events are delivered even when the user closes the tab.
+
+If you need to force delivery at a specific moment (for example, before navigating away in a custom flow), you can flush manually:
+
+```ts
+await Metry.flush()
+```
+
+</Step>
+
+</Steps>

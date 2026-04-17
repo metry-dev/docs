@@ -1,0 +1,135 @@
+---
+title: "What are events in Metry? Steps, names, and properties"
+sidebarTitle: "Events"
+description: "Events — called steps in Metry — are named, timestamped records of user actions. Learn how to track them, shape their payloads, and name them well."
+---
+
+In Metry, every meaningful thing a user does is captured as an **event** (referred to internally as a "step"). Each event has a name, an optional set of properties, and a timestamp generated at the moment you call `Metry.step()`. Events are queued locally and sent to your ingest endpoint in batches, so they have minimal impact on your app's performance.
+
+## Tracking an event
+
+Call `Metry.step()` with a name and an optional properties object:
+
+```ts
+Metry.step('checkout_started', {
+  cart_total: 149.99,
+  item_count: 3,
+  currency: 'USD',
+})
+```
+
+The method signature is:
+
+```ts
+Metry.step(name: string, properties?: Record<string, unknown>)
+```
+
+- **`name`** — A string between 1 and 100 characters that identifies the action.
+- **`properties`** — An optional plain object with key-value metadata. Every value must be JSON-serializable.
+
+<Note>
+  Event names must be between **1 and 100 characters**. Names outside that range are silently dropped with a console warning. Properties must be a plain object — class instances, arrays at the top level, and circular references are rejected.
+</Note>
+
+## Event payload structure
+
+When Metry queues your event internally, each entry takes this shape:
+
+```json
+{
+  "name": "checkout_started",
+  "properties": {
+    "cart_total": 149.99,
+    "item_count": 3,
+    "currency": "USD"
+  },
+  "timestamp": "2026-04-17T10:23:45.123Z"
+}
+```
+
+## Full request payload
+
+When a batch is flushed to your ingest endpoint, the SDK wraps the events in a top-level `EventRequestPayload`:
+
+```json
+{
+  "type": "event",
+  "apiKey": "pk_live_xxxxxxxxxxxx",
+  "sessionId": "ses_abc123",
+  "identity": {
+    "userId": "user_42",
+    "traits": {
+      "plan": "pro"
+    }
+  },
+  "events": [
+    {
+      "name": "checkout_started",
+      "properties": { "cart_total": 149.99 },
+      "timestamp": "2026-04-17T10:23:45.123Z"
+    }
+  ],
+  "sentAt": "2026-04-17T10:23:50.000Z"
+}
+```
+
+The `sentAt` field reflects when the batch was dispatched, not when each individual event occurred. Per-event timing is preserved in each event's own `timestamp`.
+
+## Naming events
+
+Consistent naming makes your data easier to query and understand. Follow these conventions:
+
+<AccordionGroup>
+  <Accordion title="Use snake_case">
+    Lowercase words joined by underscores are the most portable format across analytics tools and databases.
+
+    ```
+    signup_completed   ✓
+    SignupCompleted    ✗
+    signup-completed   ✗
+    ```
+  </Accordion>
+  <Accordion title="Use past-tense action verbs">
+    Events describe things that already happened, so the name should reflect that.
+
+    ```
+    checkout_started    ✓
+    checkout_completed  ✓
+    start_checkout      ✗
+    ```
+  </Accordion>
+  <Accordion title="Be specific and descriptive">
+    Avoid generic names that are hard to distinguish in dashboards.
+
+    ```
+    plan_upgraded       ✓
+    button_clicked      ✗  (too vague)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Using properties
+
+Properties are key-value metadata attached to a specific event. They let you slice and filter events when you analyze your data. Use them to capture anything contextual that is specific to the event — not things that are true of the user in general (use `Metry.identify()` traits for that).
+
+<CodeGroup>
+```ts Good — event-specific context
+Metry.step('video_played', {
+  video_id: 'vid_789',
+  duration_seconds: 312,
+  autoplay: false,
+})
+```
+
+```ts Avoid — user-level data belongs in traits
+// Don't repeat user-level data on every event.
+// Call Metry.identify() once instead.
+Metry.step('video_played', {
+  user_email: 'alice@example.com', // ✗
+  user_plan: 'pro',                // ✗
+  video_id: 'vid_789',             // ✓
+})
+```
+</CodeGroup>
+
+All property values must be JSON-serializable. Strings, numbers, booleans, arrays, and nested plain objects are all valid. Class instances and functions are not.

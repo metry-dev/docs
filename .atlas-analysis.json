@@ -1,0 +1,89 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Metry",
+  "projectDescription": "Metry is a lightweight JavaScript SDK for tracking user events and funnel steps in browser applications.",
+  "theme": "luma",
+  "primaryColor": "#eb5344",
+  "lightColor": "#040404",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/events",
+              "concepts/identity",
+              "concepts/batching"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/nextjs",
+              "guides/spa",
+              "guides/funnels"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/options",
+              "configuration/debugging"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "SDK Methods",
+            "pages": [
+              "api-reference/init",
+              "api-reference/identify",
+              "api-reference/step",
+              "api-reference/flush",
+              "api-reference/reset",
+              "api-reference/send-beacon",
+              "api-reference/destroy"
+            ]
+          },
+          {
+            "group": "Types",
+            "pages": [
+              "api-reference/types"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Browser-native event tracking with automatic batching and retry",
+    "User identification with traits for personalized analytics",
+    "Funnel step tracking via Metry.step()",
+    "Automatic page-unload flushing via sendBeacon",
+    "Configurable flush intervals and batch sizes",
+    "Safe for SSR/Next.js — no-ops on server, client-only execution",
+    "Debug mode for development logging"
+  ],
+  "publicApiSurface": [
+    "Metry.init(config)",
+    "Metry.identify(userId, traits)",
+    "Metry.step(name, properties)",
+    "Metry.flush()",
+    "Metry.sendBeacon()",
+    "Metry.reset()",
+    "Metry.destroy()"
+  ]
+}

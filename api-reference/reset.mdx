@@ -1,0 +1,51 @@
+---
+title: "Metry.reset() — Clear user identity and session state"
+sidebarTitle: "reset()"
+description: "Clear the stored user ID, traits, and pending queue, then generate a new session ID. Call on logout to prevent events from being attributed to the wrong user."
+---
+
+Call `Metry.reset()` when the current user logs out. It clears the stored `userId` and `traits` set by `identify()`, discards any events still waiting in the queue, and generates a new session ID. After `reset()` returns, subsequent calls to `step()` will be attributed to an anonymous session with no user identity attached, until `identify()` is called again.
+
+```typescript
+Metry.reset(): void
+```
+
+## Parameters
+
+None.
+
+## Returns
+
+`void`
+
+## Examples
+
+### Logout handler
+
+```typescript
+async function handleLogout() {
+  await signOut()
+  Metry.reset()
+}
+```
+
+### Reset and re-identify for account switching
+
+```typescript
+function switchAccount(newUser: User) {
+  Metry.reset()
+  Metry.identify(newUser.id, { email: newUser.email, plan: newUser.plan })
+}
+```
+
+<Warning>
+  `reset()` permanently discards any events that are still in the queue at the time it is called. If you want to preserve those events, call `flush()` first before calling `reset()`.
+</Warning>
+
+<Note>
+  After `reset()`, the SDK remains initialised — you do not need to call `init()` again. Only the user identity, traits, and pending queue are cleared. The flush timer and lifecycle listeners continue running normally.
+</Note>
+
+<Tip>
+  In multi-user or account-switching flows, pair `reset()` with an immediate `identify()` call for the incoming user to ensure no gap in attribution.
+</Tip>

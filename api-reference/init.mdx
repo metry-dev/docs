@@ -1,0 +1,95 @@
+---
+title: "Metry.init() — Initialize and configure the Metry SDK"
+sidebarTitle: "init()"
+description: "Configure and start the Metry SDK. Call once at app startup before using any other method. Browser-only; calling on the server is a safe no-op."
+---
+
+Call `Metry.init()` once when your application starts, before any calls to `identify()`, `step()`, or other methods. It creates the internal tracker instance, starts the auto-flush timer, and registers page-lifecycle listeners for automatic beacon sending on tab hide and page unload. If you call `init()` a second time, the previous instance is torn down first, making it safe to use under React Strict Mode and Next.js Fast Refresh.
+
+```typescript
+Metry.init(config: InitConfig): void
+```
+
+## Parameters
+
+<ParamField body="apiKey" type="string" required>
+  Your publishable API key. This value is embedded in every outbound request and is safe to include in browser code.
+</ParamField>
+
+<ParamField body="endpoint" type="string" required>
+  The URL of your ingest endpoint. Must use `https://`. Plain `http://` is only permitted when the hostname is `localhost`, `127.0.0.1`, or `[::1]`. An invalid or insecure URL causes `init()` to throw synchronously.
+</ParamField>
+
+<ParamField body="flushInterval" type="number" default={5000}>
+  Milliseconds between automatic flushes. Increase this value to reduce request frequency on low-traffic pages, or decrease it for near-real-time delivery. The timer does not start on the server.
+</ParamField>
+
+<ParamField body="maxBatchSize" type="number" default={50}>
+  Maximum number of events to include in a single request. When the queue reaches this size, a flush is triggered immediately regardless of the timer. Values above `100` are silently capped to `100`.
+</ParamField>
+
+<ParamField body="debug" type="boolean" default={false}>
+  When `true`, the SDK emits verbose `[Metry]` log messages to the browser console, including initialization details, flush activity, and warnings. Disable in production.
+</ParamField>
+
+## Returns
+
+`void`
+
+## Examples
+
+### Minimal setup
+
+```typescript
+import { Metry } from '@metry-dev/sdk'
+
+Metry.init({
+  apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+  endpoint: 'https://ingest.example.com/v1/events',
+})
+```
+
+### Custom flush tuning
+
+```typescript
+Metry.init({
+  apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+  endpoint: 'https://ingest.example.com/v1/events',
+  flushInterval: 10_000,
+  maxBatchSize: 25,
+  debug: process.env.NODE_ENV !== 'production',
+})
+```
+
+### Next.js App Router (layout entry point)
+
+```typescript
+// app/layout.tsx
+'use client'
+
+import { useEffect } from 'react'
+import { Metry } from '@metry-dev/sdk'
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    Metry.init({
+      apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+      endpoint: 'https://ingest.example.com/v1/events',
+    })
+  }, [])
+
+  return <html><body>{children}</body></html>
+}
+```
+
+<Note>
+  `Metry.init()` is browser-only. On the server (Node.js, Edge Runtime, SSR), the call is a no-op — no timers are started and no network requests are made. Only import and call it from client-side code.
+</Note>
+
+<Warning>
+  Both `apiKey` and `endpoint` are required. Omitting either one, or supplying an endpoint with an invalid or non-HTTPS scheme, causes `init()` to throw an error immediately.
+</Warning>
+
+<Tip>
+  Calling `init()` a second time is safe — the previous instance is destroyed first. This behaviour is intentional and means you do not need to guard against double-initialisation in development environments that use React Strict Mode.
+</Tip>
