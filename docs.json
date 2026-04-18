@@ -7,10 +7,17 @@
     "light": "#fafafa",
     "dark": "#121212"
   },
-  "favicon": "https://media.brand.dev/0c613b69-d705-4eb3-b3cb-fbfca5a8fa48.png",
-  "logo": "https://media.brand.dev/dc30c59b-77cf-49dd-96c6-7913290c2217.svg",
+  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://metry.dev"
+  },
   "navbar": {
     "links": []
+  },
+  "fonts": {
+    "family": "Inter"
   },
   "navigation": {
     "tabs": [
@@ -19,10 +26,7 @@
         "groups": [
           {
             "group": "Get Started",
-            "pages": [
-              "introduction",
-              "quickstart"
-            ]
+            "pages": ["introduction", "quickstart"]
           },
           {
             "group": "Core Concepts",
@@ -34,18 +38,11 @@
           },
           {
             "group": "Guides",
-            "pages": [
-              "guides/nextjs",
-              "guides/spa",
-              "guides/funnels"
-            ]
+            "pages": ["guides/nextjs", "guides/spa", "guides/funnels"]
           },
           {
             "group": "Configuration",
-            "pages": [
-              "configuration/options",
-              "configuration/debugging"
-            ]
+            "pages": ["configuration/options", "configuration/debugging"]
           }
         ]
       },
@@ -66,9 +63,7 @@
           },
           {
             "group": "Types",
-            "pages": [
-              "api-reference/types"
-            ]
+            "pages": ["api-reference/types"]
           }
         ]
       }

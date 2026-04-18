@@ -1,10 +1,10 @@
 ---
-title: "What are events in Metry? Steps, names, and properties"
+title: "Events"
 sidebarTitle: "Events"
-description: "Events — called steps in Metry — are named, timestamped records of user actions. Learn how to track them, shape their payloads, and name them well."
+description: "Called steps in Metry, are named, timestamped records of user actions. Learn how to track them, shape their payloads, and name them well."
 ---
 
-In Metry, every meaningful thing a user does is captured as an **event** (referred to internally as a "step"). Each event has a name, an optional set of properties, and a timestamp generated at the moment you call `Metry.step()`. Events are queued locally and sent to your ingest endpoint in batches, so they have minimal impact on your app's performance.
+Every meaningful thing a user does is captured as an **event**. Each event has a name, an optional set of properties, and a timestamp generated at the moment you call `Metry.step()`. Events are queued locally and sent to your ingest endpoint in batches, so they have minimal impact on your app's performance.
 
 ## Tracking an event
 
