@@ -1,23 +1,30 @@
 ---
 title: "Introduction"
-description: "Metry is a lightweight JavaScript SDK for tracking named events, identifying users, and reliably delivering analytics data from the browser."
+description: "The Metry JavaScript SDK is the official browser client for sending events to your Metry project."
 ---
 
-Metry is a lightweight browser event-tracking SDK that gives you a simple, reliable way to capture what users do in your application. It handles batching, automatic retries, and page-unload delivery so you can focus on instrumentation rather than infrastructure.
+The Metry JavaScript SDK is the official browser client for sending events to your Metry project. You install it once, identify your users, and call `Metry.step()` at each point in your funnel. Metry takes care of batching, retries, and delivery so that every event makes it to your dashboard — where you can see conversion, drop-off, step timing, and segment breakdowns without building anything yourself.
 
-## Key capabilities
+If you are new to Metry, the SDK is one half of the picture. The other half is the dashboard at [metry.dev](https://dashboard.metry.dev), where your events turn into funnels, trends, and insights.
 
-- **Track named events** — call `Metry.step()` to record any action with optional metadata properties
-- **Identify users with traits** — call `Metry.identify()` to associate events with a user ID and attach traits (email, plan, etc.) to every subsequent event
-- **Automatic batching and retry** — events queue up and flush on a configurable interval (default 5 seconds) or when the batch reaches its size threshold (default 50, max 100)
-- **Page-unload beacon flushing** — the SDK hooks `visibilitychange` and `pagehide` automatically, using `navigator.sendBeacon` to deliver queued events even when the page is closing
-- **SSR-safe** — safe to import in server-side code; timers and beacon sends are no-ops outside the browser, so only `init()` needs to be called from client code
+## What the SDK does
 
-## When to use Metry
+- **Identifies users.** Call `Metry.identify()` once you know who the user is, and every event after that is attached to them — along with any traits you pass (plan, source, email, and so on).
+- **Tracks funnel steps.** Call `Metry.step()` at each step you want to measure. Metry builds the funnel on the server side from the step names you define in your dashboard.
+- **Batches and flushes automatically.** Events queue in memory and flush every 5 seconds, or whenever the batch hits 50 events — whichever comes first. Both values are configurable.
+- **Delivers on page unload.** When a user closes the tab or navigates away, the SDK uses `navigator.sendBeacon` to get the last batch out reliably.
+- **Is safe to import anywhere.** The SDK is browser-first but safe to import in server components and API routes. Timers and network calls are no-ops off the browser, so only `init()` needs to run on the client.
 
-Use Metry when you need a small, dependency-free way to stream behavioral events from the browser to your own ingest endpoint. It is a good fit if you control the backend, want to avoid third-party analytics vendors, or need a minimal footprint in a performance-critical app.
+## What Metry does
 
-Metry is **not** a full analytics platform. It does not include dashboards, session replay, A/B testing, or identity resolution — it is a transport layer only.
+The SDK is the ingest side. The dashboard is where the value lives:
+
+- **Funnel overview** — step-by-step conversion, drop-off, and completion time for any funnel you define.
+- **Trends** — daily movement and conversion rate over time, with filters for country, device, browser, OS, plan, and source.
+- **Segments** — conversion performance broken down by user attribute, so you can see where a specific cohort is struggling.
+- **User timelines** — the full chronological event history for any individual user, useful when you need to understand what actually happened.
+
+You instrument with the SDK. Metry does the rest.
 
 ## Installation
 

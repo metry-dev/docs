@@ -1,49 +1,66 @@
 ---
-title: "Configure Metry: init() options, defaults, and limits"
+title: "init() options"
 sidebarTitle: "Options"
 description: "Reference for every option accepted by Metry.init() — apiKey, endpoint, flushInterval, maxBatchSize, and debug — with defaults, types, and constraints."
 ---
 
-You pass configuration to `Metry.init()` once at application startup, before calling any other SDK method. Required options must always be provided; optional options fall back to sensible defaults if omitted. Calling `Metry.init()` a second time is safe — it tears down the previous instance and starts a fresh one.
+`Metry.init()` accepts a single configuration object. Call it once at application startup, before any other SDK method. Calling `init()` a second time is safe — it tears down the previous instance and starts a fresh one, which makes the SDK compatible with React Strict Mode and Next.js Fast Refresh.
+
+## Options
 
 <ParamField body="apiKey" type="string" required>
-  Your publishable API key. Safe to include in browser code — it is sent as the `x-api-key` header on every ingest request.
+  Your publishable API key. Safe to include in browser code — it is sent as the `x-api-key` header on every ingest request. Find or create keys under **Settings → API Keys** in your Metry dashboard.
 </ParamField>
 
-<ParamField body="endpoint" type="string" required>
-  The URL of your Metry ingest endpoint. Must use `https://` in production. `http://` is only allowed when the hostname is `localhost`, `127.0.0.1`, or `[::1]`.
-</ParamField>
+<ParamField body="endpoint" type="string" default="https://ingest.metry.dev/v1/events">
+  The URL of the Metry ingest endpoint. Defaults to Metry's hosted ingest — you only need to set this if you're routing traffic through your own CDN or running a self-hosted ingest service.
 
-<ParamField body="flushInterval" type="number" default="5000">
-  Milliseconds between automatic event flushes. The SDK starts a repeating timer on initialization and sends any queued events each time it fires. Minimum effective value is `1`.
-</ParamField>
-
-<ParamField body="maxBatchSize" type="number" default="50">
-  Maximum number of events included in a single HTTP request. If the queue reaches this threshold before the flush timer fires, the SDK flushes immediately. Values above `100` are silently capped to `100`.
+  Must use `https://`. `http://` is allowed only when the hostname is `localhost`, `127.0.0.1`, or `[::1]`.
 </ParamField>
 
 <ParamField body="debug" type="boolean" default="false">
-  Enable verbose logging to the browser console. All debug messages are prefixed with `[Metry]`. Only enable this in development — never ship debug mode to production.
+  Enable verbose logging to the browser console. All debug messages are prefixed with `[Metry]`. Intended for development — leaves console noise in production builds if left on. See [Debugging](/debugging) for the full list of logged events.
 </ParamField>
+
+<ParamField body="flushInterval" type="number" default="5000">
+  Milliseconds between automatic event flushes. The SDK starts a repeating timer on initialization and sends any queued events each time it fires. Flushing also happens when `maxBatchSize` is reached and on page unload, regardless of this interval.
+</ParamField>
+
+<ParamField body="maxBatchSize" type="number" default="50">
+  Maximum number of events in a single HTTP request. If the queue reaches this threshold before the flush timer fires, the SDK flushes immediately.
+
+  Valid range is `1` to `100`. Values above `100` are silently capped (with a one-time warning). Fractional values are floored.
+</ParamField>
+
+## Errors
+
+`Metry.init()` throws synchronously if the configuration is invalid:
+
+| Error message | Cause |
+|---------------|-------|
+| `Missing required configuration` | `apiKey` was not provided |
+| `Invalid endpoint URL` | `endpoint` could not be parsed as a URL |
+| `Endpoint must use https:// (http:// allowed for localhost)` | `endpoint` uses `http://` with a non-local hostname |
 
 ## Complete example
 
-The snippet below shows every available option. Only `apiKey` and `endpoint` are required.
+The snippet below shows every option. Only `apiKey` is required.
 
-```js
+```ts
 Metry.init({
-  apiKey: process.env.NEXT_PUBLIC_METRY_KEY,
-  endpoint: 'https://ingest.example.com/v1/events',
+  apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+  debug: import.meta.env.DEV, // or: process.env.NODE_ENV !== 'production'
   flushInterval: 10000,
   maxBatchSize: 25,
-  debug: false,
 })
 ```
 
-<Warning>
-  Passing an `http://` endpoint whose hostname is not `localhost`, `127.0.0.1`, or `[::1]` throws an error immediately. Always use `https://` for any non-local endpoint.
-</Warning>
-
 <Note>
-  Calling `Metry.init()` more than once is safe. Each call destroys the previous instance — stopping its flush timer and removing lifecycle listeners — and starts a new one. This behaviour makes the SDK compatible with React Strict Mode and Next.js Fast Refresh.
+  Calling `Metry.init()` more than once is safe. Each call destroys the previous instance — stopping its flush timer and removing lifecycle listeners — before starting a new one.
 </Note>
+
+## See also
+
+- [Quickstart](/quickstart) — the minimal setup, in context.
+- [Debugging](/debugging) — what `debug: true` logs and how to interpret warnings.
+- [`step()`](/api-reference/step) and [`identify()`](/api-reference/identify) — the methods you'll call after `init()`.

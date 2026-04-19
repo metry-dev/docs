@@ -1,70 +1,60 @@
 ---
 title: "Quickstart"
-description: "Install the Metry SDK, call init() with your API key, identify your users, and send your first event. Full setup takes under five minutes."
+description: "Install the Metry SDK, call init() with your API key, and send your first event. Setup takes about five minutes."
 ---
 
-This guide walks you through installing the Metry SDK, wiring it into your application, and sending your first event. The whole process takes about five minutes. Events are queued in memory and sent automatically in batches — the default batch size is 50 events (maximum 100), and the SDK flushes on a timer, on batch fill, and on page unload.
+This guide walks you through installing the Metry SDK, wiring it into your app, and sending your first event. Events are queued in memory and sent in batches automatically — the default batch size is 50 (max 100), and the SDK flushes on a timer, when the batch fills, and on page unload.
+
+Before you start, grab your publishable API key from **Settings → API Keys** in your Metry dashboard. You'll need it in step 2.
 
 <Steps>
 
 <Step title="Install the package">
-
 Install `@metry-dev/sdk` from npm using your preferred package manager.
 
 <CodeGroup>
-
 ```bash npm
 npm install @metry-dev/sdk
 ```
-
 ```bash yarn
 yarn add @metry-dev/sdk
 ```
-
 ```bash pnpm
 pnpm add @metry-dev/sdk
 ```
-
 </CodeGroup>
-
 </Step>
 
 <Step title="Initialize the SDK">
-
-Import `Metry` and call `init()` once when your application boots. The `apiKey` and `endpoint` fields are both required.
+Import `Metry` and call `init()` once when your application boots. `apiKey` is required.
 
 ```ts
 import { Metry } from '@metry-dev/sdk'
 
 Metry.init({
-  apiKey: 'YOUR_API_KEY',
-  endpoint: 'https://ingest.example.com/v1/events',
+  apiKey: 'pk_your_publishable_key'
 })
 ```
 
 <Warning>
-  `Metry.init()` is browser-only. The package is safe to import in server-side code, but you must only call `init()` from client-side code. In Next.js, call it inside a Client Component or a `useEffect` hook.
+  `Metry.init()` is browser-only. The package is safe to import anywhere, but `init()` itself must run on the client. In Next.js, call it from a Client Component — see the [Next.js guide](/guides/nextjs) for the recommended `<MetryProvider>` pattern.
 </Warning>
 
 <Tip>
-  Enable verbose logging during development by passing `debug: true` to `init()`:
+  Pass `debug: true` during development to log every queued event and outgoing batch to the browser console:
 
-  ```ts
+```ts
   Metry.init({
-    apiKey: 'YOUR_API_KEY',
-    endpoint: 'https://ingest.example.com/v1/events',
+    apiKey: 'pk_your_publishable_key',
+    endpoint: 'https://ingest.metry.dev/v1/events',
     debug: true,
   })
-  ```
-
-  Debug mode prints each queued event and every outgoing batch to the browser console, making it easy to verify your instrumentation before going to production.
+```
 </Tip>
-
 </Step>
 
 <Step title="Identify the user">
-
-After the user logs in or becomes known, call `Metry.identify()` to associate all subsequent events with their ID. Pass any traits you want attached to those events.
+Once the user is known — usually after login — call `Metry.identify()` to attach all subsequent events to them. Any traits you pass are included with every event that follows.
 
 ```ts
 Metry.identify('user_123', {
@@ -73,13 +63,11 @@ Metry.identify('user_123', {
 })
 ```
 
-Traits persist until you call `Metry.identify()` again or `Metry.reset()` (for example, on logout).
-
+The identity is held in memory for the current page. Call `Metry.identify()` again to update traits, or `Metry.reset()` on logout to clear it.
 </Step>
 
 <Step title="Track your first event">
-
-Call `Metry.step()` to record a named event. The first argument is the event name (1–100 characters); the second is an optional plain-object of JSON-serializable properties.
+Call `Metry.step()` to record a named event. The first argument is the step name (1–100 characters, matching a step in one of your funnels). The second is an optional object of properties you want to attach.
 
 ```ts
 Metry.step('signup_completed', {
@@ -88,20 +76,34 @@ Metry.step('signup_completed', {
 })
 ```
 
-The event is queued immediately and delivered in the next flush.
-
+The event is queued immediately and sent in the next flush.
 </Step>
 
-<Step title="Events flush automatically">
+<Step title="Let flushing happen automatically">
+You don't need to manage flushing yourself. The SDK sends queued events:
 
-You do not need to manage flushing manually. The SDK flushes queued events every 5 seconds, whenever the batch size threshold is reached, and on page hide via `navigator.sendBeacon` — so events are delivered even when the user closes the tab.
+- Every 5 seconds, on a timer
+- As soon as the batch hits its size threshold (default 50 events)
+- On page hide, using `navigator.sendBeacon` — so events are delivered even when the user closes the tab
 
-If you need to force delivery at a specific moment (for example, before navigating away in a custom flow), you can flush manually:
+If you ever need to force delivery at a specific moment — for example, right before a hard navigation in a custom flow — you can flush manually:
 
 ```ts
 await Metry.flush()
 ```
-
 </Step>
 
 </Steps>
+
+## What's next
+
+Now that events are flowing, head back to your Metry dashboard. Once your first events arrive, you can create a funnel from the step names you're tracking and start seeing conversion, drop-off, and timing data.
+
+<CardGroup cols={2}>
+  <Card title="Create your first funnel" icon="chart-line" href="/guides/first-funnel">
+    Turn the step names you're tracking into a funnel in the dashboard.
+  </Card>
+  <Card title="Next.js integration" icon="react" href="/guides/nextjs">
+    The recommended setup pattern for App Router and Pages Router.
+  </Card>
+</CardGroup>

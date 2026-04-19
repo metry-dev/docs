@@ -1,192 +1,195 @@
 ---
-title: "Integrate Metry event tracking in a single-page app"
-sidebarTitle: "Single-Page Apps"
-description: "Set up the Metry SDK in any single-page application to track route changes, identify users, and capture conversion events across the full session lifecycle."
+title: "React SPA (Vite, CRA, React Router)"
+sidebarTitle: "React SPA"
+description: "Add Metry to a React single-page app: initialize once at startup, identify users after login, and track route changes through React Router."
 ---
 
-In a single-page application the page never fully reloads, so you initialize Metry once at startup and keep the instance alive for the entire session. Route changes, user logins, and logouts are all handled with explicit calls rather than relying on page navigation. This guide walks through the full setup using React as the primary example, with notes for Vue and Svelte equivalents.
+In a single-page app the page never fully reloads, so you initialize Metry once at startup and keep the instance alive for the whole session. Route changes, logins, and logouts all happen through explicit SDK calls rather than page navigation.
 
-<Tip>
-  Metry automatically flushes any queued events when the page is hidden or
-  unloaded — it hooks into `visibilitychange` and `pagehide` for you. You do
-  not need any extra setup to handle SPA navigation or tab switching.
-</Tip>
+This guide uses React with Vite and React Router as the primary example. The same patterns apply to Create React App or any other React setup — only the environment variable prefix changes (`VITE_` vs `REACT_APP_`).
 
 ## Setup
 
 <Steps>
-  <Step title="Install the SDK">
-    Add `@metry-dev/sdk` to your project.
 
-    <CodeGroup>
-      ```bash npm
-      npm install @metry-dev/sdk
-      ```
+<Step title="Install the SDK">
+Add `@metry-dev/sdk` to your project.
 
-      ```bash pnpm
-      pnpm add @metry-dev/sdk
-      ```
+<CodeGroup>
+```bash npm
+npm install @metry-dev/sdk
+```
+```bash pnpm
+pnpm add @metry-dev/sdk
+```
+```bash yarn
+yarn add @metry-dev/sdk
+```
+</CodeGroup>
 
-      ```bash yarn
-      yarn add @metry-dev/sdk
-      ```
-    </CodeGroup>
-  </Step>
+Then add your publishable key to `.env`:
 
-  <Step title="Initialize once at app startup">
-    Call `Metry.init()` at the top level of your application entry point,
-    before rendering anything. This starts the flush loop and registers the
-    page-hide listeners.
+```bash .env
+VITE_METRY_KEY=pk_...
+```
 
-    <Tabs>
-      <Tab title="React (main.tsx)">
-        ```tsx src/main.tsx
-        import { StrictMode } from 'react'
-        import { createRoot } from 'react-dom/client'
-        import { Metry } from '@metry-dev/sdk'
-        import { App } from './App'
+You can find your key under **Settings → API Keys** in your Metry dashboard.
+</Step>
 
-        Metry.init({
-          apiKey: import.meta.env.VITE_METRY_KEY,
-          endpoint: import.meta.env.VITE_METRY_ENDPOINT,
-        })
+<Step title="Initialize at app startup">
+Call `Metry.init()` at your entry point, before rendering. This starts the flush loop and registers the page-unload listeners.
 
-        createRoot(document.getElementById('root')!).render(
-          <StrictMode>
-            <App />
-          </StrictMode>,
-        )
-        ```
-      </Tab>
-      <Tab title="Vanilla JS (main.ts)">
-        ```ts src/main.ts
-        import { Metry } from '@metry-dev/sdk'
+```tsx src/main.tsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { Metry } from '@metry-dev/sdk'
+import { App } from './App'
 
-        Metry.init({
-          apiKey: import.meta.env.VITE_METRY_KEY,
-          endpoint: import.meta.env.VITE_METRY_ENDPOINT,
-        })
+Metry.init({
+  apiKey: import.meta.env.VITE_METRY_KEY,
+})
 
-        // rest of your app bootstrap
-        ```
-      </Tab>
-    </Tabs>
-  </Step>
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+```
 
-  <Step title="Identify users after authentication">
-    Once the user authenticates, call `Metry.identify()` with a stable user ID
-    and any traits you want attached to all future events. Traits persist for
-    the rest of the session until `reset()` or a subsequent `identify()` call.
+<Note>
+  `Metry.init()` is idempotent. React Strict Mode double-invokes effects in development, and Vite's hot module replacement can re-run your entry file — both are handled automatically, with no duplicate listeners or flushes.
+</Note>
+</Step>
 
-    ```ts
-    import { Metry } from '@metry-dev/sdk'
+<Step title="Track funnel steps">
+Call `Metry.step()` whenever a user completes a step in one of your funnels. The name should match a step you've defined in your Metry dashboard. The second argument is an optional object of properties.
 
-    async function onLoginSuccess(user: { id: string; email: string; plan: string }) {
-      Metry.identify(user.id, {
-        email: user.email,
-        plan: user.plan,
-      })
-    }
-    ```
+```tsx src/components/SignupForm.tsx
+import { Metry } from '@metry-dev/sdk'
 
-    <Note>
-      In Vue, call `Metry.identify()` from a Pinia action or a composable after
-      your auth store resolves the user. In Svelte, call it from within a
-      component's `onMount` once the session is confirmed.
-    </Note>
-  </Step>
+export function SignupForm() {
+  async function handleSubmit() {
+    // ...your signup logic
 
-  <Step title="Track route changes">
-    SPAs don't fire full page loads on navigation, so you need to emit a
-    `page_view` event whenever the route changes. The example below uses React
-    Router v6.
-
-    ```tsx src/components/RouteTracker.tsx
-    import { useEffect } from 'react'
-    import { useLocation } from 'react-router-dom'
-    import { Metry } from '@metry-dev/sdk'
-
-    export function RouteTracker() {
-      const location = useLocation()
-
-      useEffect(() => {
-        Metry.step('page_view', { path: location.pathname })
-      }, [location.pathname])
-
-      return null
-    }
-    ```
-
-    Render `<RouteTracker />` once inside your router, for example in
-    `App.tsx`:
-
-    ```tsx src/App.tsx
-    import { BrowserRouter, Routes, Route } from 'react-router-dom'
-    import { RouteTracker } from './components/RouteTracker'
-
-    export function App() {
-      return (
-        <BrowserRouter>
-          <RouteTracker />
-          <Routes>
-            {/* your routes */}
-          </Routes>
-        </BrowserRouter>
-      )
-    }
-    ```
-
-    <Note>
-      **Vue Router:** Use a global `afterEach` navigation guard —
-      `router.afterEach((to) => Metry.step('page_view', { path: to.path }))`.
-
-      **SvelteKit:** Subscribe to the `$page` store —
-      `$: Metry.step('page_view', { path: $page.url.pathname })`.
-    </Note>
-  </Step>
-
-  <Step title="Handle logout">
-    Call `Metry.reset()` when the user signs out. This clears the user ID,
-    traits, and pending queue, and generates a new session ID so that
-    post-logout events are not attributed to the previous user.
-
-    ```ts
-    import { Metry } from '@metry-dev/sdk'
-
-    async function onLogout() {
-      // your sign-out logic here ...
-
-      Metry.reset()
-    }
-    ```
-  </Step>
-
-  <Step title="Teardown (optional)">
-    If your framework unmounts and remounts the application root — for example
-    during hot module replacement in development, or in a micro-frontend shell
-    that loads and unloads sub-apps — call `Metry.destroy()` in your cleanup
-    function. This stops the flush loop, removes lifecycle listeners, and
-    attempts one final flush of any queued events.
-
-    ```tsx src/main.tsx
-    import { Metry } from '@metry-dev/sdk'
-
-    Metry.init({
-      apiKey: import.meta.env.VITE_METRY_KEY,
-      endpoint: import.meta.env.VITE_METRY_ENDPOINT,
+    Metry.step('signup_completed', {
+      plan: 'pro',
+      source: 'google_ads',
     })
+  }
 
-    const root = createRoot(document.getElementById('root')!)
-    root.render(<App />)
+  return <button onClick={handleSubmit}>Create account</button>
+}
+```
+</Step>
 
-    // Micro-frontend teardown hook
-    export function unmount() {
-      Metry.destroy()
-      root.unmount()
-    }
-    ```
+<Step title="Identify users after login">
+Once you know who the user is, call `Metry.identify()` with a stable user ID and any traits you want attached to subsequent events.
 
-    After calling `destroy()`, you must call `Metry.init()` again before using
-    any other SDK method.
-  </Step>
+```ts
+import { Metry } from '@metry-dev/sdk'
+
+async function onLoginSuccess(user: {
+  id: string
+  email: string
+  plan: string
+}) {
+  Metry.identify(user.id, {
+    email: user.email,
+    plan: user.plan,
+  })
+}
+```
+
+The identity is held in memory for the current page session. Call `identify()` again to update traits, or `reset()` on logout to clear it. A hard reload clears it automatically — re-identify as soon as your app knows who the user is.
+</Step>
+
+<Step title="Track route changes">
+SPAs don't fire page loads on navigation, so you need to emit an event yourself when the route changes. With React Router v6:
+
+```tsx src/components/RouteTracker.tsx
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { Metry } from '@metry-dev/sdk'
+
+export function RouteTracker() {
+  const location = useLocation()
+
+  useEffect(() => {
+    Metry.step('page_view', { path: location.pathname })
+  }, [location.pathname])
+
+  return null
+}
+```
+
+Render `<RouteTracker />` once inside your router:
+
+```tsx src/App.tsx
+import { BrowserRouter, Routes } from 'react-router-dom'
+import { RouteTracker } from './components/RouteTracker'
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <RouteTracker />
+      <Routes>
+        {/* your routes */}
+      </Routes>
+    </BrowserRouter>
+  )
+}
+```
+
+<Tip>
+  Only instrument `page_view` if you want it as a tracked step. Metry is designed around explicit funnel steps — tracking the actions that matter (`signup_completed`, `plan_selected`, `checkout_started`) usually produces more useful funnels than raw pageviews.
+</Tip>
+</Step>
+
+<Step title="Handle logout">
+Call `Metry.reset()` when the user signs out. This clears the user ID, traits, and any pending events, and starts a new session.
+
+```ts
+import { Metry } from '@metry-dev/sdk'
+
+async function onLogout() {
+  // ...your sign-out logic
+
+  Metry.reset()
+}
+```
+</Step>
+
 </Steps>
+
+## Advanced: teardown in micro-frontends
+
+Most SPAs don't need to call `Metry.destroy()` — the SDK lives for the lifetime of the page, and the automatic flush on `pagehide` handles the final send.
+
+The exception is a micro-frontend shell that loads and unloads sub-applications at runtime. In that case, call `Metry.destroy()` in your cleanup hook to stop the flush loop, remove listeners, and attempt one final flush:
+
+```tsx
+import { Metry } from '@metry-dev/sdk'
+
+Metry.init({ apiKey: import.meta.env.VITE_METRY_KEY })
+
+const root = createRoot(document.getElementById('root')!)
+root.render(<App />)
+
+export function unmount() {
+  Metry.destroy()
+  root.unmount()
+}
+```
+
+After `destroy()`, call `Metry.init()` again before using any other method.
+
+## What's next
+
+<CardGroup cols={2}>
+  <Card title="Create your first funnel" icon="chart-line" href="/guides/first-funnel">
+    Turn your tracked step names into a funnel in the dashboard.
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/init">
+    Every option accepted by `init()`, `identify()`, `step()`, and `reset()`.
+  </Card>
+</CardGroup>

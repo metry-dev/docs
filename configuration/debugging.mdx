@@ -1,81 +1,156 @@
 ---
-title: "Debug and troubleshoot Metry SDK integration issues"
+title: "Debugging"
 sidebarTitle: "Debugging"
-description: "Enable verbose debug logging, interpret [Metry - Warning] console messages, and fix the most common issues encountered when integrating the Metry SDK."
+description: "Enable verbose logging, interpret [Metry - Warning] messages, and troubleshoot the most common SDK integration issues."
 ---
 
-The Metry SDK exposes two levels of console output to help you diagnose problems: opt-in debug logs that trace normal SDK activity, and always-on warnings that fire whenever something unexpected happens. Most integration issues can be identified by reading these messages before consulting this page.
+The Metry SDK exposes two kinds of console output to help you diagnose problems:
 
-## Enabling debug mode
+- **Debug logs** (`[Metry] ...`) — opt-in via `debug: true`, used for tracing normal SDK activity.
+- **Warnings** (`[Metry - Warning] ...`) — always on, fired whenever the SDK encounters something unexpected.
 
-Pass `debug: true` to `Metry.init()` to turn on verbose logging:
+Most integration issues can be identified by reading these messages before consulting this page.
 
-```js
+## Enable debug mode
+
+Pass `debug: true` to `Metry.init()`:
+
+```ts
 Metry.init({
-  apiKey: process.env.NEXT_PUBLIC_METRY_KEY,
-  endpoint: 'https://ingest.example.com/v1/events',
+  apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
   debug: true,
 })
 ```
 
-When debug mode is active, the SDK writes messages prefixed with `[Metry]` to the browser console. These messages cover:
+When debug mode is active, the SDK writes messages prefixed with `[Metry]` to the browser console, including:
 
-- Initialization parameters (`endpoint`, `flushInterval`, `maxBatchSize`)
-- Flush triggers (timer-based and threshold-based)
-- Batch sizes at the time of each send
-- Successful HTTP responses
-- Failed HTTP responses and re-queue decisions
+- The resolved configuration on init (endpoint, flush interval, batch size)
+- Session resets
+- Notices about unsupported browser APIs (e.g. missing `navigator.sendBeacon`)
 
 <Tip>
-  Disable debug mode in production builds using an environment check:
+  Disable debug mode in production. A common pattern:
 
-  ```js
+```ts
   Metry.init({
-    apiKey: process.env.NEXT_PUBLIC_METRY_KEY,
-    endpoint: 'https://ingest.example.com/v1/events',
-    debug: process.env.NODE_ENV !== 'production',
+    apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+    debug: import.meta.env.DEV, // or: process.env.NODE_ENV !== 'production'
   })
-  ```
+```
 </Tip>
 
-## SDK warnings
+## Warning messages
 
-Some messages are always written to the console, regardless of the `debug` setting. These are prefixed with `[Metry - Warning]` and indicate a condition that requires your attention:
+These messages are always written to the console, regardless of the `debug` setting. Each one corresponds to a specific condition in the SDK.
 
-| Condition | Warning message |
-|-----------|----------------|
-| Event name is empty or over 100 characters | `track() requires an event name between 1 and 100 characters` |
+| Condition | Warning |
+|-----------|---------|
+| Event name is empty, not a string, or over 100 characters | `track() requires an event name between 1 and 100 characters` |
 | `properties` argument is not a plain object | `track() properties must be a plain object` |
-| `navigator.sendBeacon` was rejected by the browser | `navigator.sendBeacon rejected by browser` |
+| `maxBatchSize` config exceeds 100 | `maxBatchSize exceeds 100; capping payload batches to 100` |
+| Payload could not be JSON-serialized (circular ref, etc.) | `Failed to serialize batch (circular reference or unserializable value); dropping events` |
+| Session ID was invalid and had to be regenerated | `sessionId is invalid; regenerating before send` |
 | Endpoint returned a 4xx response | `Endpoint rejected batch with status <N>; dropping events` |
 | Endpoint returned a 5xx response | `Endpoint returned status <N>; re-queuing batch` |
-| Payload could not be JSON-serialized | `Failed to serialize batch (circular reference or unserializable value); dropping events` |
-| `maxBatchSize` exceeds 100 | `maxBatchSize exceeds 100; capping payload batches to 100` |
+| Network error while sending (fetch rejected) | `Failed to send payload, re-queuing batch` |
+| `navigator.sendBeacon` was rejected by the browser | `navigator.sendBeacon rejected by browser` |
+
+Initialization errors throw rather than warn. The most common ones:
+
+- `Missing required configuration` — `apiKey` (or `endpoint`, if you're self-hosting) was not provided.
+- `Invalid endpoint URL` — the `endpoint` string couldn't be parsed as a URL.
+- `Endpoint must use https:// (http:// allowed for localhost)` — only HTTPS endpoints are accepted in production; `http://` is permitted only for `localhost` or `127.0.0.1` during local development.
+
+## Verifying your integration
+
+After you call `Metry.step()` for the first time, you can confirm events are flowing in three ways:
+
+1. **Network tab.** Open DevTools → Network and filter for `events`. You should see a `POST` request to the ingest endpoint within 5 seconds of the call (sooner if your batch fills). A `204` or `200` response means the event was accepted.
+2. **Metry dashboard.** Head to the **Recent users** panel on your project overview. Your user should appear within a minute of the event firing.
+3. **Debug mode.** Turn on `debug: true` to see the SDK's init log and any warnings in the console.
+
+If none of these show activity, start at the top of the next section.
 
 ## Common issues
 
 <AccordionGroup>
-  <Accordion title="Events are not being sent">
-    Check that `Metry.init()` was called before any other SDK method. Open the browser console and look for `[Metry - Warning]` messages — they usually identify the root cause. Also verify that your `endpoint` URL is reachable from the browser by opening it directly or using the Network tab in DevTools.
-  </Accordion>
 
-  <Accordion title="I'm getting 'Call .init() first'">
-    You called a Metry method — such as `Metry.step()` or `Metry.identify()` — before `Metry.init()` completed. Initialize the SDK once at application startup, before any components or event handlers that use the SDK run.
-  </Accordion>
+<Accordion title="Events are not being sent">
+Most common causes, in order:
 
-  <Accordion title="Events are dropped on page unload">
-    On modern browsers, the SDK automatically uses `navigator.sendBeacon` when the page becomes hidden (via the `visibilitychange` and `pagehide` events). If you have a custom unload handler that conflicts with the SDK lifecycle, call `Metry.sendBeacon()` manually from your handler to drain the queue before the page closes.
-  </Accordion>
+1. `Metry.init()` wasn't called, or was called after `Metry.step()`. Initialize the SDK at app startup, before any handlers that track events.
+2. The `apiKey` is wrong or disabled. Check **Settings → API Keys** in your dashboard. Keys can be deactivated — make sure the one you're using is marked active.
+3. A 4xx response is dropping your batches silently-ish (there's a warning, but it's easy to miss). Look for `[Metry - Warning] Endpoint rejected batch with status 401`.
+4. Your browser extension (ad-blocker, privacy tool) is blocking the request. Check the Network tab — blocked requests show as `(blocked)`.
+</Accordion>
 
-  <Accordion title="My endpoint is rejecting requests (4xx)">
-    The SDK drops the batch on any 4xx response and does not retry. Check that your `apiKey` is correct and that the `endpoint` URL matches what your ingest service expects. Enable debug mode to log the full request payload and inspect exactly what is being sent.
-  </Accordion>
+<Accordion title="'Call .init() first' error">
+A Metry method — `step()`, `identify()`, `flush()`, `reset()`, or `destroy()` — was called before `Metry.init()`. This usually happens in one of two situations:
 
-  <Accordion title="maxBatchSize above 100 is silently capped">
-    The SDK enforces a hard cap of 100 events per HTTP request. If you set `maxBatchSize` to a value greater than 100, a `[Metry - Warning]` message is logged once and each outgoing batch is capped at 100 events. Your `maxBatchSize` value is not modified — only the effective batch size per request is limited.
-  </Accordion>
+- A component imports and calls `Metry.step()` at module top level before your app's entry file runs `init()`.
+- In Next.js, a Server Component or Route Handler tried to use the SDK. Metry is browser-only — move the call into a Client Component.
+</Accordion>
 
-  <Accordion title="I see duplicate events in Strict Mode">
-    `Metry.init()` safely tears down the previous instance when called again, so double-invocation under React Strict Mode does not cause duplicate sends. If you are still seeing duplicate events, check that `Metry.identify()` and `Metry.step()` are called only once per user action — for example, ensure they are not placed inside a `useEffect` that runs twice due to Strict Mode without a corresponding cleanup.
-  </Accordion>
+<Accordion title="Events sent near page unload aren't arriving">
+The SDK hooks `visibilitychange` and `pagehide` automatically and uses `navigator.sendBeacon` to drain the queue. If events around unload still go missing, check for:
+
+- `[Metry - Warning] navigator.sendBeacon rejected by browser` — typically means the payload is too large (most browsers cap beacons at 64KB). Reduce `maxBatchSize` so each batch fits under the cap.
+- A custom unload handler in your app that preempts the SDK. If you control the unload path explicitly, call `Metry.sendBeacon()` from your handler to drain the queue.
+- Mobile Safari, which is notoriously aggressive about killing background tabs. Some event loss on mobile is unavoidable.
+</Accordion>
+
+<Accordion title="Endpoint is rejecting requests with 4xx">
+The SDK drops the batch on any 4xx response — it doesn't retry, since retrying a client error would just fail again.
+
+Check:
+- `401 Unauthorized` — the `apiKey` is wrong, disabled, or doesn't belong to the project your endpoint is expecting.
+- `429 Too Many Requests` — you've exceeded your plan's rate limit. Check your usage in the dashboard.
+- `400 Bad Request` — the payload shape doesn't match what the ingest endpoint expects. This usually only happens if you're self-hosting an older ingest version.
+</Accordion>
+
+<Accordion title="`maxBatchSize` above 100 is being capped">
+The SDK enforces a hard ceiling of 100 events per HTTP request. If you set `maxBatchSize` higher than 100, the warning fires once and each outgoing batch is capped at 100. Your configured value isn't mutated — only the effective batch size per request is limited.
+
+This cap exists because `navigator.sendBeacon` has a browser-enforced payload size limit, and larger batches cause beacon delivery to fail silently on page unload.
+</Accordion>
+
+<Accordion title="Duplicate events under React Strict Mode">
+`Metry.init()` is idempotent — calling it twice tears down the previous instance, so Strict Mode double-invoke won't cause duplicate sends from init itself.
+
+Duplicate `step()` events under Strict Mode usually come from calling `step()` inside a `useEffect` without a guard. In development, Strict Mode intentionally runs effects twice to help catch non-idempotent logic. Options:
+
+- Move the call into an event handler instead of a `useEffect` where possible.
+- Use a ref to guard against the second run:
+
+```tsx
+  const tracked = useRef(false)
+  useEffect(() => {
+    if (tracked.current) return
+    tracked.current = true
+    Metry.step('page_view', { path: location.pathname })
+  }, [location.pathname])
+```
+
+Strict Mode only runs in development, so this won't affect production users either way — but it's worth handling cleanly so your dev logs stay accurate.
+</Accordion>
+
+<Accordion title="Events are attributed to the wrong user">
+If you see events for `user_A` showing up under `user_B` (or under no user), it's almost always one of these:
+
+- You called `Metry.identify()` with the new user but didn't call `Metry.reset()` first. `identify()` overwrites traits but doesn't start a new session — events recorded between logins can share a session ID.
+- Traits from a previous login are carrying over because you didn't call `reset()` at logout.
+
+Call `Metry.reset()` on every logout. Call `Metry.identify()` on every login.
+</Accordion>
+
 </AccordionGroup>
+
+## Still stuck?
+
+If none of the above helps, reach out to support with:
+
+- Your project ID (found on your dashboard under **Settings → API Keys**)
+- A console dump with `debug: true` enabled
+- The request/response from your Network tab for a failing event
+
+[Contact support →](mailto:support@metry.dev)

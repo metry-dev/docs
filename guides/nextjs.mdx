@@ -1,179 +1,214 @@
 ---
-title: "Add Metry event tracking to your Next.js application"
+title: "Next.js (App Router)"
 sidebarTitle: "Next.js"
-description: "Integrate the Metry SDK into a Next.js App Router project to track page views, identify users, and measure conversion funnels from client components."
+description: "Add Metry to a Next.js App Router project: initialize the SDK in a client provider, track funnel steps, identify users, and handle route changes."
 ---
 
-Metry works with Next.js App Router by running entirely in client components. Because the SDK relies on browser APIs — timers, `navigator.sendBeacon`, and `visibilitychange` — you initialize it inside a `useEffect` and wrap your application in a dedicated provider component.
-
-<Warning>
-  All Metry calls (`init`, `identify`, `step`, `reset`) must run in client
-  components marked with `'use client'`, or inside a `useEffect`. Never call
-  them from Server Components or server actions — the SDK is browser-only.
-</Warning>
+Metry runs entirely in the browser, so in Next.js you initialize it inside a client component and wrap your app in a provider. This guide covers the App Router setup. If you're on Pages Router, see the note at the bottom.
 
 ## Setup
 
 <Steps>
-  <Step title="Install the SDK">
-    Add `@metry-dev/sdk` to your project.
 
-    <CodeGroup>
-      ```bash npm
-      npm install @metry-dev/sdk
-      ```
+<Step title="Install the SDK">
+Add `@metry-dev/sdk` to your project.
 
-      ```bash pnpm
-      pnpm add @metry-dev/sdk
-      ```
+<CodeGroup>
+```bash npm
+npm install @metry-dev/sdk
+```
+```bash pnpm
+pnpm add @metry-dev/sdk
+```
+```bash yarn
+yarn add @metry-dev/sdk
+```
+</CodeGroup>
 
-      ```bash yarn
-      yarn add @metry-dev/sdk
-      ```
-    </CodeGroup>
+Then add your publishable key to `.env.local`:
 
-    Then add your environment variables to `.env.local`:
+```bash .env.local
+NEXT_PUBLIC_METRY_KEY=pk_...
+```
 
-    ```bash .env.local
-    NEXT_PUBLIC_METRY_KEY=pk_...
-    NEXT_PUBLIC_METRY_ENDPOINT=https://ingest.example.com/v1/events
-    ```
-  </Step>
+You can find your key under **Settings → API Keys** in your Metry dashboard.
+</Step>
 
-  <Step title="Create a Metry provider component">
-    Create `app/providers/metry-provider.tsx`. This component initializes the
-    SDK once when it mounts and tears it down on unmount.
+<Step title="Create a Metry provider component">
+Create `app/providers/metry-provider.tsx`. It initializes the SDK once on mount and tears it down on unmount.
 
-    ```tsx app/providers/metry-provider.tsx
-    'use client'
+```tsx app/providers/metry-provider.tsx
+'use client'
 
-    import { useEffect } from 'react'
-    import { Metry } from '@metry-dev/sdk'
+import { useEffect } from 'react'
+import { Metry } from '@metry-dev/sdk'
 
-    export function MetryProvider({ children }: { children: React.ReactNode }) {
-      useEffect(() => {
-        Metry.init({
-          apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
-          endpoint: process.env.NEXT_PUBLIC_METRY_ENDPOINT!,
-        })
+export function MetryProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    Metry.init({
+      apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+    })
 
-        return () => {
-          Metry.destroy()
-        }
-      }, [])
-
-      return <>{children}</>
+    return () => {
+      Metry.destroy()
     }
-    ```
+  }, [])
 
-    <Note>
-      `Metry.init()` is safe to call multiple times. If an instance is already
-      running — for example, during React Strict Mode double-invocation or
-      Next.js Fast Refresh — it automatically tears down the previous instance
-      before creating a new one. No duplicate flushes or listeners will occur.
-    </Note>
-  </Step>
+  return <>{children}</>
+}
+```
 
-  <Step title="Add the provider to your root layout">
-    Wrap your application's `children` with `<MetryProvider />` in
-    `app/layout.tsx`.
+<Note>
+  `Metry.init()` is idempotent. If an instance is already running — during React Strict Mode double-invocation or Next.js Fast Refresh — the previous instance is torn down automatically before a new one starts. You won't get duplicate flushes or event listeners.
+</Note>
+</Step>
 
-    ```tsx app/layout.tsx
-    import { MetryProvider } from './providers/metry-provider'
+<Step title="Add the provider to your root layout">
+Wrap your app's `children` with `<MetryProvider>` in `app/layout.tsx`.
 
-    export default function RootLayout({
-      children,
-    }: {
-      children: React.ReactNode
-    }) {
-      return (
-        <html lang="en">
-          <body>
-            <MetryProvider>{children}</MetryProvider>
-          </body>
-        </html>
-      )
-    }
-    ```
-  </Step>
+```tsx app/layout.tsx
+import { MetryProvider } from './providers/metry-provider'
 
-  <Step title="Track events from any client component">
-    Call `Metry.step()` from any client component to record a named event.
-    Pass an optional properties object with JSON-serializable values.
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <MetryProvider>{children}</MetryProvider>
+      </body>
+    </html>
+  )
+}
+```
 
-    ```tsx app/components/pricing-button.tsx
-    'use client'
+`layout.tsx` can remain a server component — only `MetryProvider` itself needs `'use client'`.
+</Step>
 
-    import { Metry } from '@metry-dev/sdk'
+<Step title="Track funnel steps">
+Call `Metry.step()` from any client component to record an event. The name should match a step in one of your funnels. The optional second argument is a plain object of properties to attach.
 
-    export function PricingButton() {
-      function handleClick() {
-        Metry.step('page_view', { path: '/pricing' })
-      }
+```tsx app/components/signup-form.tsx
+'use client'
 
-      return <button onClick={handleClick}>View pricing</button>
-    }
-    ```
+import { Metry } from '@metry-dev/sdk'
 
-    You can also track page views automatically by calling `Metry.step()` inside
-    a `useEffect` that runs on mount:
+export function SignupForm() {
+  async function handleSubmit() {
+    // ...your signup logic
 
-    ```tsx app/pricing/page.tsx
-    'use client'
+    Metry.step('signup_completed', {
+      plan: 'pro',
+      source: 'google_ads',
+    })
+  }
 
-    import { useEffect } from 'react'
-    import { Metry } from '@metry-dev/sdk'
+  return <button onClick={handleSubmit}>Create account</button>
+}
+```
+</Step>
 
-    export default function PricingPage() {
-      useEffect(() => {
-        Metry.step('page_view', { path: '/pricing' })
-      }, [])
+<Step title="Identify users">
+Identify a user as soon as you know who they are — usually right after login. The cleanest pattern is a small client component that reads the session and calls `identify()` once:
 
-      return <main>{/* ... */}</main>
-    }
-    ```
-  </Step>
+```tsx app/providers/metry-identity.tsx
+'use client'
 
-  <Step title="Identify the user after login">
-    Call `Metry.identify()` once you know who the user is — typically after a
-    successful sign-in. Pass a stable user ID and any traits you want attached
-    to all subsequent events.
+import { useEffect } from 'react'
+import { Metry } from '@metry-dev/sdk'
+import { useSession } from '@/lib/auth'
 
-    ```tsx app/components/login-form.tsx
-    'use client'
+export function MetryIdentity() {
+  const { data: session } = useSession()
 
-    import { Metry } from '@metry-dev/sdk'
+  useEffect(() => {
+    if (!session?.user) return
 
-    async function handleLogin(userId: string, email: string, plan: string) {
-      // your auth logic here ...
+    Metry.identify(session.user.id, {
+      email: session.user.email,
+      plan: session.user.plan,
+    })
+  }, [session?.user?.id])
 
-      Metry.identify(userId, {
-        email,
-        plan,
-      })
-    }
-    ```
-  </Step>
+  return null
+}
+```
 
-  <Step title="Handle logout">
-    Call `Metry.reset()` when the user signs out. This clears the current user
-    identity, all stored traits, and any pending event queue, then generates a
-    fresh session ID.
+Drop `<MetryIdentity />` inside `<MetryProvider>` in your layout. It runs once the session is available and re-identifies if the user changes.
 
-    ```tsx app/components/logout-button.tsx
-    'use client'
+If your auth flow is fully client-side, you can also call `Metry.identify()` directly from your login handler — whichever fits your stack.
+</Step>
 
-    import { Metry } from '@metry-dev/sdk'
+<Step title="Track route changes">
+Next.js App Router doesn't trigger a full page load between routes. To record route changes as events, hook into `usePathname`:
 
-    export function LogoutButton() {
-      async function handleLogout() {
-        // your sign-out logic here ...
+```tsx app/providers/metry-page-tracker.tsx
+'use client'
 
-        Metry.reset()
-      }
+import { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
+import { Metry } from '@metry-dev/sdk'
 
-      return <button onClick={handleLogout}>Sign out</button>
-    }
-    ```
-  </Step>
+export function MetryPageTracker() {
+  const pathname = usePathname()
+
+  useEffect(() => {
+    Metry.step('page_view', { path: pathname })
+  }, [pathname])
+
+  return null
+}
+```
+
+Drop `<MetryPageTracker />` inside `<MetryProvider>`. Every navigation will fire a `page_view` event with the new path.
+
+<Tip>
+  Only instrument `page_view` if you actually want it as a tracked step. Metry is designed around explicit funnel steps — for most products, tracking key actions like `signup_completed` or `checkout_started` gives you more useful funnels than raw pageview data.
+</Tip>
+</Step>
+
+<Step title="Handle logout">
+Call `Metry.reset()` when the user signs out. This clears the user ID, traits, and pending event queue, and starts a new session.
+
+```tsx app/components/logout-button.tsx
+'use client'
+
+import { Metry } from '@metry-dev/sdk'
+
+export function LogoutButton() {
+  async function handleLogout() {
+    // ...your sign-out logic
+
+    Metry.reset()
+  }
+
+  return <button onClick={handleLogout}>Sign out</button>
+}
+```
+</Step>
+
 </Steps>
+
+## Server Components and Server Actions
+
+Metry is browser-only. Don't import or call it from Server Components, Route Handlers, or Server Actions — it won't send events and may cause build-time warnings. If you need to record an event as the result of a server action, either:
+
+- Return a signal from the action and call `Metry.step()` in the client component that invoked it, or
+- Call `Metry.step()` optimistically before invoking the action.
+
+## Using Pages Router?
+
+The setup is similar — initialize in `pages/_app.tsx` inside a `useEffect`, and use `router.events` from `next/router` for route-change tracking. A dedicated Pages Router guide is coming; for now, the [Quickstart](/quickstart) covers the core flow.
+
+## What's next
+
+<CardGroup cols={2}>
+  <Card title="Create your first funnel" icon="chart-line" href="/guides/first-funnel">
+    Turn your tracked step names into a funnel in the dashboard.
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/init">
+    Every option accepted by `init()`, `identify()`, `step()`, and `reset()`.
+  </Card>
+</CardGroup>

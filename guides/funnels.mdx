@@ -1,157 +1,125 @@
 ---
-title: "Track user conversion funnels with Metry step events"
+title: "Funnel tracking"
 sidebarTitle: "Funnel Tracking"
-description: "Model user progression as named step events, attach segment traits via identify(), and analyze drop-off across every stage of your conversion funnel."
+description: "Model user progression as named step events, attach user traits via identify(), and let Metry analyze drop-off across every stage."
 ---
 
-A funnel in Metry is a sequence of named `step()` events that represent meaningful milestones in a user's journey — for example, signing up, completing a profile, and activating a core feature. Each call to `step()` creates an independent event record with a timestamp, a user ID (if the user has been identified), and any properties you attach. Your analytics tool then orders these events chronologically to visualize where users drop off.
+A funnel in Metry is an ordered sequence of named steps — for example, `signup_completed → profile_filled → first_project_created → invited_teammate → activated`. You define the funnel in your Metry dashboard, then instrument the same step names in your code with `Metry.step()`. Metry matches events to the funnel by name and shows you conversion rate, drop-off, and time-to-complete for each stage.
 
-## Anatomy of a funnel
+## How it works
 
-The Metry SDK records funnel steps with `Metry.step(name, properties)`. The `name` is the event identifier that your analytics tool groups by, and `properties` is an optional plain object of JSON-serializable metadata. Segment-level traits — like a user's plan or acquisition source — should be attached via `Metry.identify()` so they appear automatically on every event without repeating them on each `step()` call.
+There are two sides to every funnel:
 
-## Example: onboarding funnel
+1. **In the dashboard:** you create a funnel and define its steps in order. Step names are plain strings (1–100 characters) — no schema, no predefined vocabulary.
+2. **In your code:** you call `Metry.step(name)` at each point where a user reaches one of those milestones. The name must match a step you defined in the dashboard.
 
-The following funnel tracks a new user from signup through full activation across five stages.
+Each call to `step()` records one event with a timestamp, the identified user (if any), and any properties you attach. Metry orders these events chronologically per user and builds the funnel visualization on the server side.
 
-```
-signup_completed → profile_filled → first_project_created → invited_teammate → activated
-```
+<Note>
+  You don't need to call steps in order, and you don't need to call every step. Users who skip steps show up as drop-offs in the funnel between the last step they hit and the next one they didn't.
+</Note>
 
-### Track each step
+## Traits vs properties
 
-Call `Metry.step()` at the point in your code where each milestone is reached. Pass event-specific properties — such as the current plan or acquisition source — directly on the event.
+You attach metadata to events in two places, and the distinction matters for how you analyze your funnel later.
 
-```ts
-import { Metry } from '@metry-dev/sdk'
+- **Traits** go on the user via `Metry.identify()`. Use them for things that are true about the user across all events — plan, acquisition source, email, name. Traits are automatically attached to every subsequent event until you call `identify()` again or `reset()`.
+- **Properties** go on a single event via the second argument to `Metry.step()`. Use them for things specific to that one moment — which plan the user selected *at this step*, the button variant they clicked, a referrer from the current page.
 
-// Step 1 — user completes the signup form
-Metry.step('signup_completed', {
-  plan: 'trial',
-  source: 'product_hunt',
-})
-
-// Step 2 — user fills in their profile
-Metry.step('profile_filled', {
-  plan: 'trial',
-  source: 'product_hunt',
-})
-
-// Step 3 — user creates their first project
-Metry.step('first_project_created', {
-  plan: 'trial',
-  source: 'product_hunt',
-})
-
-// Step 4 — user invites a teammate
-Metry.step('invited_teammate', {
-  plan: 'trial',
-  source: 'product_hunt',
-})
-
-// Step 5 — user completes activation
-Metry.step('activated', {
-  plan: 'trial',
-  source: 'product_hunt',
-})
-```
-
-### Attach traits with identify()
-
-Repeating `plan` and `source` on every `step()` call works, but a cleaner approach is to attach those segment-level properties once via `Metry.identify()`. Traits set there are included on every subsequent event automatically.
+As a rule of thumb: if you'd have to pass the same value to every `step()` call, it belongs in `identify()`.
 
 ```ts
-import { Metry } from '@metry-dev/sdk'
-
-// Identify the user with segment traits
+// Set once — attached to every event that follows
 Metry.identify('user_0042', {
   email: 'alice@example.com',
-  name: 'Alice',
   plan: 'trial',
   source: 'product_hunt',
 })
 
-// Steps no longer need to repeat plan or source
+// Per-event properties only — plan and source come from traits
 Metry.step('signup_completed')
+Metry.step('plan_selected', { selected_plan: 'pro' })
+```
+
+## A typical onboarding funnel
+
+Here's what a five-step onboarding funnel looks like when instrumented across a real application. Each call happens in the context where the milestone actually occurs — not all in one block.
+
+```ts
+// After signup form submits successfully — in your signup component
+Metry.identify(user.id, {
+  email: user.email,
+  plan: user.plan,
+  source: user.source,
+})
+Metry.step('signup_completed')
+```
+
+```ts
+// After the user saves their profile — in your profile form handler
 Metry.step('profile_filled')
-Metry.step('first_project_created')
-Metry.step('invited_teammate')
+```
+
+```ts
+// After the first project is created — in your project creation flow
+Metry.step('first_project_created', { template: 'blank' })
+```
+
+```ts
+// After a teammate invite is sent — in your team invite component
+Metry.step('invited_teammate', { invite_method: 'email' })
+```
+
+```ts
+// Once the user has met your activation criteria — usually triggered server-side
+// from your own logic and signaled to the client
 Metry.step('activated')
 ```
 
-### Complete working example
-
-The example below mirrors the pattern used in the Metry seed script — identify the user, then walk them through each funnel step with relevant properties.
-
-```ts
-import { Metry } from '@metry-dev/sdk'
-
-Metry.init({
-  apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
-  endpoint: process.env.NEXT_PUBLIC_METRY_ENDPOINT!,
-})
-
-async function trackOnboarding(user: {
-  id: string
-  email: string
-  name: string
-  plan: string
-  source: string
-}) {
-  // Associate all events with this user and their segment traits
-  Metry.identify(user.id, {
-    email: user.email,
-    name: user.name,
-    plan: user.plan,
-    source: user.source,
-  })
-
-  // Record each step as the user completes it
-  Metry.step('signup_completed', { plan: user.plan, source: user.source })
-  Metry.step('profile_filled', { plan: user.plan, source: user.source })
-  Metry.step('first_project_created', { plan: user.plan, source: user.source })
-  Metry.step('invited_teammate', { plan: user.plan, source: user.source })
-  Metry.step('activated', { plan: user.plan, source: user.source })
-
-  // Force-send before the user navigates away (optional)
-  await Metry.flush()
-}
-```
+Once these events are flowing, create a funnel in your Metry dashboard with these five step names in order. Metry will immediately start showing conversion, drop-off, and timing for every user who enters.
 
 ## Naming best practices
 
-Following a consistent naming convention makes funnels easier to query and compare over time.
+Consistent names make funnels easier to read and compare over time.
 
-- **Use `snake_case`** — `signup_completed`, not `SignupCompleted` or `signup-completed`
-- **Use past-tense verbs** — events describe something that already happened (`profile_filled`, not `fill_profile`)
-- **Order logically** — name steps to reflect the intended sequence so they sort naturally in your analytics tool
-- **Be specific** — `first_project_created` is more useful than `project_event` when filtering
+- **Use `snake_case`** — `signup_completed`, not `SignupCompleted` or `signup-completed`.
+- **Use past-tense verbs** — events describe something that already happened. `profile_filled`, not `fill_profile`.
+- **Be specific** — `first_project_created` is more useful than `project_event` when you want to segment later.
+- **Keep names stable** — renaming a step in your code without updating the funnel in your dashboard will break the match. Treat step names like API contracts.
 
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="What if a user skips a step?">
-    Steps are independent events — Metry does not enforce order or require every
-    step to be present. If a user never reaches `invited_teammate`, that event
-    simply won't exist in your dataset. Your analytics tool will surface this as
-    a drop-off between `first_project_created` and `invited_teammate` when you
-    build a funnel report.
-  </Accordion>
 
-  <Accordion title="Can I track the same step multiple times?">
-    Yes. Each call to `Metry.step()` creates a new event record with its own
-    timestamp. If a user completes `first_project_created` twice, two events are
-    recorded. Most funnel tools let you configure whether to count the first
-    occurrence only or all occurrences — check your analytics platform's funnel
-    settings to choose the behavior that matches your use case.
-  </Accordion>
+<Accordion title="Do I have to create the funnel in the dashboard before I start tracking?">
+No. You can start sending `step()` events first and create the funnel afterward — Metry stores all events regardless. But you won't see funnel analytics until you define the funnel and its step order in the dashboard.
+</Accordion>
 
-  <Accordion title="How do I track anonymous users?">
-    You can call `Metry.step()` before `Metry.identify()`. In that case the
-    events are recorded with a `userId` of `null` and a session ID generated at
-    `init()` time. Once the user signs in and you call `Metry.identify()`, all
-    subsequent events are attributed to that user. Anonymous pre-identification
-    events are not retroactively linked — if you need stitching, handle it in
-    your data warehouse using the session ID.
-  </Accordion>
+<Accordion title="What if a user skips a step?">
+Steps are independent events — Metry doesn't enforce order or require every step to be present. If a user never reaches `invited_teammate`, no event is recorded for it, and Metry's funnel view surfaces the drop-off between the previous step they hit and this one.
+</Accordion>
+
+<Accordion title="Can I track the same step multiple times?">
+Yes. Each `step()` call creates a new event with its own timestamp. If a user completes `first_project_created` twice, two events are recorded. Metry's funnel view counts each user once per step, using their first occurrence by default.
+</Accordion>
+
+<Accordion title="How do I track anonymous users?">
+You can call `Metry.step()` before `Metry.identify()`. Events are recorded with `userId: null` and the session ID generated at `init()` time. Once the user signs in and you call `identify()`, subsequent events are attributed to that user — but earlier anonymous events are not retroactively linked to them. If you need to stitch anonymous and identified sessions together, do it downstream using the session ID.
+</Accordion>
+
+<Accordion title="Can I use the same step name in multiple funnels?">
+Yes. Step names are strings — they have no owning funnel. If `signup_completed` is the first step in your main onboarding funnel and also appears in a separate "trial-to-paid" funnel, a single `Metry.step('signup_completed')` call feeds both.
+</Accordion>
+
 </AccordionGroup>
+
+## What's next
+
+<CardGroup cols={2}>
+  <Card title="Create a funnel in the dashboard" icon="chart-line" href="/guides/first-funnel">
+    Walk through setting up your first funnel and seeing your events flow in.
+  </Card>
+  <Card title="API reference: step()" icon="code" href="/api-reference/step">
+    Full reference for the `step()` method, including property constraints.
+  </Card>
+</CardGroup>
