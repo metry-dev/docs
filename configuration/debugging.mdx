@@ -17,7 +17,7 @@ Pass `debug: true` to `Metry.init()`:
 
 ```ts
 Metry.init({
-  apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+  apiKey: 'pk_your_publishable_key',
   debug: true,
 })
 ```
@@ -33,7 +33,7 @@ When debug mode is active, the SDK writes messages prefixed with `[Metry]` to th
 
 ```ts
   Metry.init({
-    apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+    apiKey: 'pk_your_publishable_key',
     debug: import.meta.env.DEV, // or: process.env.NODE_ENV !== 'production'
   })
 ```
@@ -57,7 +57,7 @@ These messages are always written to the console, regardless of the `debug` sett
 
 Initialization errors throw rather than warn. The most common ones:
 
-- `Missing required configuration` — `apiKey` (or `endpoint`, if you're self-hosting) was not provided.
+- `Missing required configuration` — `apiKey` was not provided.
 - `Invalid endpoint URL` — the `endpoint` string couldn't be parsed as a URL.
 - `Endpoint must use https:// (http:// allowed for localhost)` — only HTTPS endpoints are accepted in production; `http://` is permitted only for `localhost` or `127.0.0.1` during local development.
 

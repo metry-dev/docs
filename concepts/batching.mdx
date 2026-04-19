@@ -15,7 +15,6 @@ Metry never sends events one at a time. Instead, each call to `Metry.step()` pus
     ```ts
     Metry.init({
       apiKey: 'pk_live_xxxx',
-      endpoint: 'https://ingest.example.com/v1/events',
       flushInterval: 3000, // flush every 3 seconds instead of 5
     })
     ```
@@ -26,7 +25,6 @@ Metry never sends events one at a time. Instead, each call to `Metry.step()` pus
     ```ts
     Metry.init({
       apiKey: 'pk_live_xxxx',
-      endpoint: 'https://ingest.example.com/v1/events',
       maxBatchSize: 25, // flush sooner on high-traffic pages
     })
     ```
@@ -38,7 +36,9 @@ Metry never sends events one at a time. Instead, each call to `Metry.step()` pus
 
 ## The internal queue
 
-The SDK holds events in an in-memory queue with a maximum capacity of **1000 events**. If the queue is full and a new event arrives, the **oldest event is dropped** to make room. Under normal circumstances — with auto-flush running every few seconds — the queue should never come close to this limit.
+The SDK holds events in an in-memory queue with a maximum capacity of **1000 events**. If the queue is full when a new `step()` call arrives, the **oldest event is dropped** to make room. If the queue is full when a failed batch is re-queued for retry, the **newest event is dropped** instead — re-queued batches take priority because they've already been counted toward your dashboard's attempted delivery.
+
+Under normal circumstances — with auto-flush running every few seconds — the queue should never approach this limit.
 
 <Note>
   The 1000-event cap is a safeguard against unbounded memory growth in scenarios where the network is unavailable for an extended period. If you are operating in an environment where the user might be offline for long stretches, consider reducing `maxBatchSize` and `flushInterval` so batches are smaller and sent more aggressively when connectivity returns.

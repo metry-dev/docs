@@ -28,7 +28,7 @@ Metry.step(name: string, properties?: Record<string, unknown>)
 - **`properties`** — An optional plain object with key-value metadata. Every value must be JSON-serializable.
 
 <Note>
-  Event names must be between **1 and 100 characters**. Names outside that range are silently dropped with a console warning. Properties must be a plain object — class instances, arrays at the top level, and circular references are rejected.
+  Event names must be between **1 and 100 characters**. Names outside that range are silently dropped with a console warning. Properties must be a plain object — class instances and arrays at the top level are rejected at the call site. Circular references aren't detected until serialization time: if one slips through, the entire batch fails to serialize and is dropped with a `[Metry - Warning] Failed to serialize batch` message.
 </Note>
 
 ## Event payload structure
@@ -49,7 +49,7 @@ When Metry queues your event internally, each entry takes this shape:
 
 ## Full request payload
 
-When a batch is flushed to your ingest endpoint, the SDK wraps the events in a top-level `EventRequestPayload`:
+When a batch is flushed to the ingest endpoint, the SDK wraps the events in a top-level `EventRequestPayload`:
 
 ```json
 {

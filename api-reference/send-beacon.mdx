@@ -25,7 +25,7 @@ None.
 ### Manual unload hook
 
 ```typescript
-window.addEventListener('beforeunload', () => {
+window.addEventListener('pagehide', () => {
   Metry.sendBeacon()
 })
 ```

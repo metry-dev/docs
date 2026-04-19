@@ -13,7 +13,7 @@ description: "Reference for every option accepted by Metry.init() — apiKey, en
 </ParamField>
 
 <ParamField body="endpoint" type="string" default="https://ingest.metry.dev/v1/events">
-  The URL of the Metry ingest endpoint. Defaults to Metry's hosted ingest — you only need to set this if you're routing traffic through your own CDN or running a self-hosted ingest service.
+  The URL of the Metry ingest endpoint. Defaults to Metry's hosted ingest — only set this if you're routing through your own CDN or running a self-hosted ingest service.
 
   Must use `https://`. `http://` is allowed only when the hostname is `localhost`, `127.0.0.1`, or `[::1]`.
 </ParamField>
@@ -48,7 +48,7 @@ The snippet below shows every option. Only `apiKey` is required.
 
 ```ts
 Metry.init({
-  apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
+  apiKey:'pk_your_publishable_key',
   debug: import.meta.env.DEV, // or: process.env.NODE_ENV !== 'production'
   flushInterval: 10000,
   maxBatchSize: 25,

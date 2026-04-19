@@ -34,8 +34,7 @@ function teardown() {
 ```typescript
 useEffect(() => {
   Metry.init({
-    apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
-    endpoint: 'https://ingest.example.com/v1/events',
+    apiKey: 'pk_your_publishable_key',
   })
 
   return () => {
@@ -53,7 +52,12 @@ afterEach(() => {
 ```
 
 <Note>
-  The final flush triggered by `destroy()` is best-effort. If the queue contains events but the network is unavailable, those events will be lost. Call `flush()` or `sendBeacon()` explicitly before `destroy()` if delivery must be guaranteed.
+  The final flush triggered by `destroy()` uses `fetch` and is subject to normal network conditions. It is **not** a beacon send — if you're tearing down during page unload, call `sendBeacon()` explicitly before `destroy()`:
+
+```ts
+  await Metry.sendBeacon()
+  Metry.destroy()
+```
 </Note>
 
 <Warning>

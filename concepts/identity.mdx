@@ -4,7 +4,7 @@ sidebarTitle: "Identity"
 description: "Learn how Metry links events to users with identify(), what traits are attached to every event, and how sessions and reset() work together."
 ---
 
-By default, Metry tracks events anonymously under an auto-generated session ID. Once you know who the user is — after login or signup — you call `Metry.identify()` to associate all subsequent events with a real user ID and optional traits. That identity is then included in every event batch until you call `Metry.reset()`.
+By default, Metry tracks events anonymously under an auto-generated session ID. Once you know who the user is — after login or signup — you call `Metry.identify()` to associate all subsequent events with a real user ID and optional traits. That identity is then included in every event batch until you call `Metry.reset()`. The identity lives in memory for the current page. After a hard reload or tab close, you'll need to call `identify()` again — usually handled automatically by the "On page load when the session is already authenticated" step below.
 
 ## Identifying a user
 
@@ -72,7 +72,7 @@ Call `identify()` as soon as the user's identity becomes known to your app:
     If you persist authentication across page loads, re-identify the user on init so pre-flush events are attributed correctly.
 
     ```ts
-    Metry.init({ apiKey: '...', endpoint: '...' })
+    Metry.init({ apiKey: '...' })
 
     const session = await getSession()
     if (session?.user) {

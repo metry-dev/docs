@@ -29,7 +29,7 @@ Metry.init(config: InitConfig): void
 </ParamField>
 
 <ParamField body="debug" type="boolean" default={false}>
-  When `true`, the SDK emits verbose `[Metry]` log messages to the browser console, including initialization details, flush activity, and warnings. Disable in production.
+  When `true`, the SDK emits `[Metry]` log messages to the browser console, including the resolved configuration on init and session resets. Warnings (`[Metry - Warning]`) fire regardless of this setting. See [Debugging](/configuration/debugging).
 </ParamField>
 
 ## Returns
@@ -44,8 +44,7 @@ Metry.init(config: InitConfig): void
 import { Metry } from '@metry-dev/sdk'
 
 Metry.init({
-  apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
-  endpoint: 'https://ingest.example.com/v1/events',
+  apiKey: 'pk_your_publishable_key',
 })
 ```
 
@@ -53,41 +52,37 @@ Metry.init({
 
 ```typescript
 Metry.init({
-  apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
-  endpoint: 'https://ingest.example.com/v1/events',
+  apiKey: 'pk_your_publishable_key',
   flushInterval: 10_000,
   maxBatchSize: 25,
   debug: process.env.NODE_ENV !== 'production',
 })
 ```
 
-### Next.js App Router (layout entry point)
+### Next.js App Router
 
-```typescript
-// app/layout.tsx
+See the [Next.js guide](/guides/nextjs) for the recommended `<MetryProvider>` pattern. A minimal version:
+
+```tsx
 'use client'
-
 import { useEffect } from 'react'
 import { Metry } from '@metry-dev/sdk'
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export function MetryProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    Metry.init({
-      apiKey: process.env.NEXT_PUBLIC_METRY_KEY!,
-      endpoint: 'https://ingest.example.com/v1/events',
-    })
+    Metry.init({ apiKey: process.env.NEXT_PUBLIC_METRY_KEY! })
+    return () => Metry.destroy()
   }, [])
-
-  return <html><body>{children}</body></html>
+  return <>{children}</>
 }
 ```
 
 <Note>
-  `Metry.init()` is browser-only. On the server (Node.js, Edge Runtime, SSR), the call is a no-op — no timers are started and no network requests are made. Only import and call it from client-side code.
+  `Metry.init()` is browser-only. On the server, the flush timer and page-lifecycle listeners are skipped, and network calls are no-ops — but configuration validation still runs, so invalid options will still throw at call-time. Only import and call it from client-side code.
 </Note>
 
 <Warning>
-  Both `apiKey` and `endpoint` are required. Omitting either one, or supplying an endpoint with an invalid or non-HTTPS scheme, causes `init()` to throw an error immediately.
+  `apiKey` is required. If you set `endpoint`, it must use `https://` (or `http://` for localhost), otherwise `init()` throws immediately.
 </Warning>
 
 <Tip>
