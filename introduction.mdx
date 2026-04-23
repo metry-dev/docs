@@ -3,7 +3,7 @@ title: "Introduction"
 description: "The Metry JavaScript SDK is the official browser client for sending events to your Metry project."
 ---
 
-The Metry JavaScript SDK is the official browser client for sending events to your Metry project. You install it once, identify your users, and call `Metry.step()` at each point in your funnel. Metry takes care of batching, retries, and delivery so that every event makes it to your dashboard — where you can see conversion, drop-off, step timing, and segment breakdowns without building anything yourself.
+The Metry JavaScript SDK is the official browser client for sending events to your Metry project. You install it once, identify your users, and call `Metry.step()` at each point in your funnel. Metry handles batching, retries for transient failures, and page-lifecycle delivery paths so valid events can reach your dashboard with minimal ceremony — where you can see conversion, drop-off, step timing, and segment breakdowns without building anything yourself.
 
 If you are new to Metry, the SDK is one half of the picture. The other half is the dashboard at [dashboard](https://dashboard.metry.dev), where your events turn into funnels, trends, and insights.
 
@@ -12,8 +12,8 @@ If you are new to Metry, the SDK is one half of the picture. The other half is t
 - **Identifies users.** Call `Metry.identify()` once you know who the user is, and every event after that is attached to them — along with any traits you pass (plan, source, email, and so on).
 - **Tracks funnel steps.** Call `Metry.step()` at each step you want to measure. Metry builds the funnel on the server side from the step names you define in your dashboard.
 - **Batches and flushes automatically.** Events queue in memory and flush every 5 seconds, or whenever the batch hits 50 events — whichever comes first. Both values are configurable.
-- **Delivers on page unload.** When a user closes the tab or navigates away, the SDK uses `navigator.sendBeacon` to get the last batch out reliably.
-- **Is safe to import anywhere.** The SDK is browser-first but safe to import in server components and API routes. Timers and network calls are no-ops off the browser, so only `init()` needs to run on the client.
+- **Attempts delivery on page unload.** When a user closes the tab or navigates away, the SDK uses `navigator.sendBeacon` to hand the last batch to the browser.
+- **Runs on the client.** The SDK has no import-time side effects, but call `init()` and tracking methods from browser/client code. Server runtimes skip browser lifecycle hooks, and modern server `fetch` implementations can still attempt network sends, so server-side tracking is not the supported integration path.
 
 ## What Metry does
 

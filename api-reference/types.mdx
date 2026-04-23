@@ -4,16 +4,36 @@ sidebarTitle: "Types"
 description: "Complete reference for every exported TypeScript type in the Metry SDK, including configuration, identity, event, and ingest payload shapes."
 ---
 
-The Metry SDK is written in TypeScript and exports all of its public types. This page documents each type, its fields, and how the types relate to one another. You can import any of these types directly from the package for use in your own TypeScript code.
+The Metry SDK is written in TypeScript and exports its public types from `@metry-dev/sdk`. This page documents each type, its fields, and how the types relate to one another.
+
+```ts
+import type {
+  Config,
+  EventRequestPayload,
+  Identity,
+  InitConfig,
+  Payload,
+  StepEvent,
+} from '@metry-dev/sdk'
+```
+
+## InitConfig
+
+`InitConfig` is the configuration object accepted by `Metry.init()`. Only `apiKey` is required. `endpoint`, `flushInterval`, `maxBatchSize`, and `debug` are optional and fall back to defaults.
+
+```typescript
+export type InitConfig = Pick<Config, 'apiKey'> &
+  Partial<Pick<Config, 'endpoint' | 'flushInterval' | 'maxBatchSize' | 'debug'>>
+```
 
 ## Config
 
-`Config` describes the full resolved configuration object used internally by the SDK after defaults have been applied. When calling `Metry.init()`, you pass an `InitConfig` — a subset of `Config` where only `apiKey` is required. `endpoint`, `flushInterval`, `maxBatchSize`, and `debug` are optional and fall back to defaults.
+`Config` describes the full resolved configuration object used internally by the SDK after defaults have been applied. Most applications pass `InitConfig` to `Metry.init()` rather than constructing `Config` directly.
 
 ```typescript
 export type Config = {
   apiKey: string
-  endpoint?: string
+  endpoint: string
   flushInterval: number
   maxBatchSize: number
   debug?: boolean
@@ -25,7 +45,7 @@ export type Config = {
 </ResponseField>
 
 <ResponseField name="endpoint" type="string" required>
-  The HTTPS URL of your ingest endpoint. `http://` is only permitted for `localhost` addresses.
+  The resolved ingest endpoint. Defaults to `https://ingest.metry.dev/v1/events` when omitted from `InitConfig`. `http://` is only permitted for `localhost` addresses.
 </ResponseField>
 
 <ResponseField name="flushInterval" type="number" required>

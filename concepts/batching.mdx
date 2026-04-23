@@ -4,7 +4,7 @@ sidebarTitle: "Batching"
 description: "Metry queues events locally and sends them in batches to reduce network overhead. Learn the three flush triggers, retry behavior, and how to flush manually."
 ---
 
-Metry never sends events one at a time. Instead, each call to `Metry.step()` pushes the event onto an in-memory queue. The SDK then drains that queue in batches according to three automatic flush triggers, keeping network overhead low without losing data. Understanding how this works helps you tune the defaults and handle edge cases like page unload.
+Metry never sends events one at a time. Instead, each call to `Metry.step()` pushes the event onto an in-memory queue. The SDK then drains that queue in batches according to three automatic flush triggers, keeping network overhead low and reducing data loss during normal browser sessions. Understanding how this works helps you tune the defaults and handle edge cases like page unload.
 
 ## The three flush triggers
 
@@ -66,7 +66,7 @@ await Metry.flush()
 ```
 
 <Tip>
-  You normally don't need to call `flush()` manually. The SDK flushes automatically on the timer interval, when the batch fills, and on page unload. Reserve manual flush for specific moments where you need delivery guarantees before a user action completes — for example, right before redirecting to an external checkout page.
+  You normally don't need to call `flush()` manually. The SDK flushes automatically on the timer interval, when the batch fills, and on page unload. Reserve manual flush for specific moments where you want a send attempt to settle before a user action completes — for example, right before redirecting to an external checkout page.
 </Tip>
 
 ### `Metry.sendBeacon()`

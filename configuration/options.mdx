@@ -19,7 +19,7 @@ description: "Reference for every option accepted by Metry.init() — apiKey, en
 </ParamField>
 
 <ParamField body="debug" type="boolean" default="false">
-  Enable verbose logging to the browser console. All debug messages are prefixed with `[Metry]`. Intended for development — leaves console noise in production builds if left on. See [Debugging](/debugging) for the full list of logged events.
+  Enable SDK lifecycle logging in the browser console. Debug messages are prefixed with `[Metry]` and include details such as the resolved configuration on init and session resets. Intended for development — leaves console noise in production builds if left on. See [Debugging](/configuration/debugging) for the full list of messages.
 </ParamField>
 
 <ParamField body="flushInterval" type="number" default="5000">
@@ -29,7 +29,7 @@ description: "Reference for every option accepted by Metry.init() — apiKey, en
 <ParamField body="maxBatchSize" type="number" default="50">
   Maximum number of events in a single HTTP request. If the queue reaches this threshold before the flush timer fires, the SDK flushes immediately.
 
-  Valid range is `1` to `100`. Values above `100` are silently capped (with a one-time warning). Fractional values are floored.
+  Effective range is `1` to `100`. Values above `100` are capped with a one-time warning. Fractional values are floored.
 </ParamField>
 
 ## Errors
@@ -48,7 +48,7 @@ The snippet below shows every option. Only `apiKey` is required.
 
 ```ts
 Metry.init({
-  apiKey:'pk_your_publishable_key',
+  apiKey: 'pk_your_publishable_key',
   debug: import.meta.env.DEV, // or: process.env.NODE_ENV !== 'production'
   flushInterval: 10000,
   maxBatchSize: 25,
@@ -62,5 +62,5 @@ Metry.init({
 ## See also
 
 - [Quickstart](/quickstart) — the minimal setup, in context.
-- [Debugging](/debugging) — what `debug: true` logs and how to interpret warnings.
+- [Debugging](/configuration/debugging) — what `debug: true` logs and how to interpret warnings.
 - [`step()`](/api-reference/step) and [`identify()`](/api-reference/identify) — the methods you'll call after `init()`.

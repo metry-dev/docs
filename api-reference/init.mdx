@@ -1,7 +1,7 @@
 ---
 title: "Metry.init() — Initialize and configure the Metry SDK"
 sidebarTitle: "init()"
-description: "Configure and start the Metry SDK. Call once at app startup before using any other method. Browser-only; calling on the server is a safe no-op."
+description: "Configure and start the Metry SDK. Call once from client-side app startup before using any other method."
 ---
 
 Call `Metry.init()` once when your application starts, before any calls to `identify()`, `step()`, or other methods. It creates the internal tracker instance, starts the auto-flush timer, and registers page-lifecycle listeners for automatic beacon sending on tab hide and page unload. If you call `init()` a second time, the previous instance is torn down first, making it safe to use under React Strict Mode and Next.js Fast Refresh.
@@ -16,8 +16,8 @@ Metry.init(config: InitConfig): void
   Your publishable API key. This value is embedded in every outbound request and is safe to include in browser code.
 </ParamField>
 
-<ParamField body="endpoint" type="string" required>
-  The URL of your ingest endpoint. Must use `https://`. Plain `http://` is only permitted when the hostname is `localhost`, `127.0.0.1`, or `[::1]`. An invalid or insecure URL causes `init()` to throw synchronously.
+<ParamField body="endpoint" type="string" default="https://ingest.metry.dev/v1/events">
+  The URL of your ingest endpoint. You usually do not need to set this because the SDK defaults to Metry's hosted ingest endpoint. If you override it, it must use `https://`. Plain `http://` is only permitted when the hostname is `localhost`, `127.0.0.1`, or `[::1]`. An invalid or insecure URL causes `init()` to throw synchronously.
 </ParamField>
 
 <ParamField body="flushInterval" type="number" default={5000}>
@@ -25,7 +25,7 @@ Metry.init(config: InitConfig): void
 </ParamField>
 
 <ParamField body="maxBatchSize" type="number" default={50}>
-  Maximum number of events to include in a single request. When the queue reaches this size, a flush is triggered immediately regardless of the timer. Values above `100` are silently capped to `100`.
+  Maximum number of events to include in a single request. When the queue reaches this size, a flush is triggered immediately regardless of the timer. Values above `100` are capped to `100` with a one-time warning.
 </ParamField>
 
 <ParamField body="debug" type="boolean" default={false}>
@@ -78,11 +78,11 @@ export function MetryProvider({ children }: { children: React.ReactNode }) {
 ```
 
 <Note>
-  `Metry.init()` is browser-only. On the server, the flush timer and page-lifecycle listeners are skipped, and network calls are no-ops — but configuration validation still runs, so invalid options will still throw at call-time. Only import and call it from client-side code.
+  `Metry.init()` is browser-only. The package has no import-time side effects, but call `init()` and tracking methods from client-side code. Server runtimes skip the flush timer and page-lifecycle listeners; in runtimes with `fetch`, manual flushes can still attempt network requests.
 </Note>
 
 <Warning>
-  `apiKey` is required. If you set `endpoint`, it must use `https://` (or `http://` for localhost), otherwise `init()` throws immediately.
+  `apiKey` is required. `endpoint` is optional and defaults to `https://ingest.metry.dev/v1/events`. If you set `endpoint`, it must use `https://` (or `http://` for localhost), otherwise `init()` throws immediately.
 </Warning>
 
 <Tip>

@@ -37,16 +37,15 @@ Metry.init({
 ```
 
 <Warning>
-  `Metry.init()` is browser-only. The package is safe to import anywhere, but `init()` itself must run on the client. In Next.js, call it from a Client Component — see the [Next.js guide](/guides/nextjs) for the recommended `<MetryProvider>` pattern.
+  `Metry.init()` is browser-only. The package has no import-time side effects, but call `init()` and tracking methods from client-side code. In Next.js, call it from a Client Component — see the [Next.js guide](/guides/nextjs) for the recommended `<MetryProvider>` pattern.
 </Warning>
 
 <Tip>
-  Pass `debug: true` during development to log every queued event and outgoing batch to the browser console:
+  Pass `debug: true` during development to log SDK lifecycle messages, such as the resolved configuration on init and session resets. Warnings are logged regardless of this setting.
 
 ```ts
   Metry.init({
     apiKey: 'pk_your_publishable_key',
-    endpoint: 'https://ingest.metry.dev/v1/events',
     debug: true,
   })
 ```
@@ -84,9 +83,9 @@ You don't need to manage flushing yourself. The SDK sends queued events:
 
 - Every 5 seconds, on a timer
 - As soon as the batch hits its size threshold (default 50 events)
-- On page hide, using `navigator.sendBeacon` — so events are delivered even when the user closes the tab
+- On page hide, using `navigator.sendBeacon`, so the browser can send the final batch as the tab closes
 
-If you ever need to force delivery at a specific moment — for example, right before a hard navigation in a custom flow — you can flush manually:
+If you ever need a send attempt at a specific moment — for example, right before a hard navigation in a custom flow — you can flush manually:
 
 ```ts
 await Metry.flush()

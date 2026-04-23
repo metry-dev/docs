@@ -193,7 +193,7 @@ export function LogoutButton() {
 
 ## Server Components and Server Actions
 
-Metry is browser-only. Don't import or call it from Server Components, Route Handlers, or Server Actions — it won't send events and may cause build-time warnings. If you need to record an event as the result of a server action, either:
+Metry is browser-only. Avoid importing or calling it from Server Components, Route Handlers, or Server Actions. Imports have no runtime side effects, but server calls are not a supported tracking path: browser lifecycle hooks will not run, and modern server runtimes with `fetch` may still attempt network requests. If you need to record an event as the result of a server action, either:
 
 - Return a signal from the action and call `Metry.step()` in the client component that invoked it, or
 - Call `Metry.step()` optimistically before invoking the action.

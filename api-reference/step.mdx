@@ -67,5 +67,5 @@ Metry.step('export_clicked', {
 </Warning>
 
 <Tip>
-  You do not need to call `flush()` after every `step()`. The SDK batches events automatically and flushes them on an interval, when the batch fills, and on page unload. Manually calling flush() is only necessary for edge cases like guaranteeing delivery before an external redirect.
+  You do not need to call `flush()` after every `step()`. The SDK batches events automatically and flushes them on an interval, when the batch fills, and on page unload. Manually calling `flush()` is only necessary for edge cases where you want a send attempt to settle before an external redirect.
 </Tip>

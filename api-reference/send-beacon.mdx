@@ -57,5 +57,5 @@ async function shutdown() {
 </Warning>
 
 <Tip>
-  Prefer `sendBeacon()` over `flush()` inside `beforeunload`, `pagehide`, and `visibilitychange` handlers. Browsers aggressively cancel in-flight `fetch` requests during page teardown, but beacon requests are queued at the OS level and complete even after the page is gone.
+  Prefer `sendBeacon()` over `flush()` inside `beforeunload`, `pagehide`, and `visibilitychange` handlers. Browsers aggressively cancel in-flight `fetch` requests during page teardown, while beacon requests are designed to keep sending after the page starts unloading.
 </Tip>
